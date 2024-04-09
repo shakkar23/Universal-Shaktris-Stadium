@@ -113,14 +113,16 @@ void Window::drawCircle(int X, int Y, int r) {
     while (x >= y)
     {
         //  Each of the following renders an octant of the circle
-        SDL_RenderDrawPoint(renderer, X + x, Y - y);
-        SDL_RenderDrawPoint(renderer, X + x, Y + y);
-        SDL_RenderDrawPoint(renderer, X - x, Y - y);
-        SDL_RenderDrawPoint(renderer, X - x, Y + y);
-        SDL_RenderDrawPoint(renderer, X + y, Y - x);
-        SDL_RenderDrawPoint(renderer, X + y, Y + x);
-        SDL_RenderDrawPoint(renderer, X - y, Y - x);
-        SDL_RenderDrawPoint(renderer, X - y, Y + x);
+        SDL_Point points[8] = {
+            {X + x, Y - y},
+            {X + x, Y + y},
+            {X - x, Y - y},
+            {X - x, Y + y},
+            {X + y, Y - x},
+            {X + y, Y + x},
+            {X - y, Y - x},
+            {X - y, Y + x}};
+        SDL_RenderDrawPoints(renderer, points, 8);
 
         if (error <= 0)
         {
@@ -163,4 +165,17 @@ void Window::setDrawColor(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 void Window::getDrawColor(Uint8& r, Uint8& g, Uint8& b, Uint8& a)
 {
     SDL_GetRenderDrawColor(renderer, &r, &g, &b, &a);
+}
+
+void Window::push_color(Uint8 r, Uint8 g, Uint8 b, Uint8 a) {
+    SDL_Color color;
+    SDL_GetRenderDrawColor(renderer, &color.r, &color.g, &color.b, &color.a);
+    colors.push(color);
+    SDL_SetRenderDrawColor(renderer, r, g, b, a);
+}
+
+void Window::pop_color() {
+    SDL_Color color = colors.top();
+    colors.pop();
+    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 }

@@ -1,6 +1,7 @@
 #pragma once
-#include <vector>
 #include <SDL2/SDL.h>
+
+#include <set>
 
 namespace Shakkar {
     // taken inspiration from the PixelGameEngine HWButton struct by javidx9
@@ -44,9 +45,9 @@ namespace Shakkar {
         Key getKey(SDL_Keycode key) const;
         void update();
     private:
-        std::vector<SDL_Keycode> cur_buttons;
-        std::vector<SDL_Keycode> prev_buttons;
-        Mouse mouse;
+     std::set<SDL_Keycode> cur_buttons;
+     std::set<SDL_Keycode> prev_buttons;
+     Mouse mouse;
     };
 };
 

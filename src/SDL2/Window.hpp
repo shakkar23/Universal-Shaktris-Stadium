@@ -3,6 +3,10 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 
+#include <stack>
+
+
+constexpr int UPDATES_PER_SECOND = 60;
 class Window {
 public:
     Window(const char* p_title, int p_w, int p_h);
@@ -25,14 +29,19 @@ public:
     // utility
     SDL_Texture* CreateTextureFromSurface(SDL_Surface* surface);
 
-    void setDrawColor(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
+    void setDrawColor(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
     void getDrawColor(Uint8& r, Uint8& g, Uint8& b, Uint8& a);
 
-private:
+    void push_color(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+    void pop_color();
+
+   private:
     SDL_Window* window;
     SDL_Renderer* renderer;
 
     SDL_Renderer* getRenderer();
+
+    std::stack<SDL_Color> colors;
 };
 

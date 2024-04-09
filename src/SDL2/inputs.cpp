@@ -44,19 +44,11 @@ namespace Shakkar {
 	}
 
 	void inputs::addKey(SDL_Keycode key) {
-		auto i = std::find(cur_buttons.begin(), cur_buttons.end(), key);
-
-		if (i == cur_buttons.end())
-			cur_buttons.push_back(key);
+		cur_buttons.insert(key);
 	}
 
 	void inputs::removeKey(SDL_Keycode key) {
-		for (auto it = cur_buttons.begin(); it != cur_buttons.end(); ++it) {
-			if (*it == key) {
-				cur_buttons.erase(it);
-				break;
-			}
-		}
+		cur_buttons.erase(key);
 	}
 
 

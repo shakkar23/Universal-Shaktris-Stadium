@@ -13,7 +13,7 @@ void Game::place_piece() {
 
     current_piece = queue.front();
 
-    std::ranges::shift_left(queue, 1);
+    std::shift_left(queue.begin(), queue.end(), 1);
 
     queue.back() = PieceType::Empty;
 }
@@ -30,7 +30,7 @@ void Game::do_hold() {
         // shift queue
         current_piece = queue.front();
 
-        std::ranges::shift_left(queue, 1);
+        std::shift_left(queue.begin(), queue.end(), 1);
 
         queue.back() = PieceType::Empty;
     }
@@ -46,7 +46,7 @@ void Game::place_piece(Piece& piece) {
             // shift queue
             current_piece = queue.front();
 
-            std::ranges::shift_left(queue, 1);
+            std::shift_left(queue.begin(), queue.end(), 1);
 
             queue.back() = PieceType::Empty;
         }

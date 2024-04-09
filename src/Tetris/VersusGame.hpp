@@ -1,7 +1,7 @@
 #pragma once
 #include <optional>
+#include <random>
 #include <vector>
-
 
 #include "Game.hpp"
 #include "Move.hpp"
@@ -17,6 +17,23 @@ enum Outcomes {
 
 class VersusGame {
 public:
+ VersusGame() {
+     p1_rng.rng = std::random_device()();
+     p1_rng.makebag();
+
+     p1_game.current_piece = p1_rng.GetPiece();
+     for (auto& p : p1_game.queue) {
+         p = p1_rng.GetPiece();
+     }
+
+     p2_rng.rng = std::random_device()();
+     p2_rng.makebag();
+
+     p2_game.current_piece = p2_rng.GetPiece();
+     for (auto& p : p2_game.queue) {
+         p = p2_rng.GetPiece();
+     }
+ }
     Game p1_game;
     Game p2_game;
 
