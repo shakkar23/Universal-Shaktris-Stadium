@@ -25,7 +25,7 @@ Window::Window(const char* p_title, const int p_w, const int p_h)
 
     SDL_Surface* surface;     // Declare an SDL_Surface to be filled in with pixel data from an image file
 #define O 0x0000
-#define _ 0x0fff
+#define _ 0xffff
     Uint16 pixels[16 * 16] = {  // ...or with raw pixel data:
       _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
       _, _, _, _, _, _, O, O, O, O, O, _, _, _, _, _,
@@ -46,7 +46,7 @@ Window::Window(const char* p_title, const int p_w, const int p_h)
     };
 #undef _
 #undef O
-    surface = SDL_CreateRGBSurfaceFrom(pixels, 16, 16, 16, 16 * 2, 0x0f00, 0x00f0, 0x000f, 0xf000);
+    surface = SDL_CreateRGBSurfaceFrom(pixels, 16, 16, 16, 32, 0x0f00, 0x00f0, 0x000f, 0xf000);
 
     // The icon is attached to the window pointer
     SDL_SetWindowIcon(this->window, surface);

@@ -2,7 +2,9 @@ find_package(SDL2 CONFIG REQUIRED)
 
 set(UCI_SOURCES
 	"main.cpp"
- "Tetris/Game.cpp" "SDL2/Window.cpp" "SDL2/inputs.cpp")
+ "Tetris/Game.cpp" "SDL2/Window.cpp" "SDL2/inputs.cpp"
+ "TBP/Bot.cpp"
+ )
 
 
  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64-v3")

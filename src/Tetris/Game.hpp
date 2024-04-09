@@ -12,10 +12,11 @@
 #include "rng.hpp"
 #include "tetrio.hpp"
 
-constexpr int QUEUE_SIZE = 5;
 
 class Game {
+
 public:
+    static constexpr int queue_size = 5;
     Game() : current_piece(PieceType::Empty) {
         for (auto& p : queue) {
             p = PieceType::Empty;
@@ -65,5 +66,5 @@ public:
 
     TetrioStats stats;
 
-    std::array<PieceType, QUEUE_SIZE> queue;
+    std::array<PieceType, queue_size> queue;
 };

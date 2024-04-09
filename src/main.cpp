@@ -77,7 +77,8 @@ void ProcessInputs(SDL_Event& event, bool& shouldDisplay, bool& windowSizedChang
                     }
                 } break;
                 case SDL_DROPFILE: {
-                    // TODO
+                    input.updateDroppedFile(event.drop.file);
+                    SDL_free(event.drop.file);
                 } break;
                 default: {
                     if ((event.key.type == SDL_KEYDOWN) || (event.key.type == SDL_KEYUP)) {

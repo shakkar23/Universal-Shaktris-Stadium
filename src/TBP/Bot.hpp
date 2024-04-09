@@ -1,7 +1,11 @@
 #pragma once
 
-#include <cstdio>
-#include <fstream>
+#include <optional>
+#include <vector>
+
+#include "Board.hpp"
+#include "Piece.hpp"
+#include "json.hpp"
 
 #ifdef __linux__
 #include <sys/types.h>
@@ -10,69 +14,32 @@
 #endif
 
 class Bot {
-        inline void start(const char* path) {
-#ifdef __linux__
-        if (pipe(parent_to_child) == -1 || pipe(child_to_parent) == -1) {
-            perror("pipe");
-            exit(1);
-        }
+   public:
+    void start(const char* path);
+    void stop();
 
-        pid_t pid = fork();
-        if (pid == -1) {
-            perror("fork");
-            exit(1);
-        }
+    void TBP_play(const Piece& move);
 
-        if (pid == 0) {
-            // child
-            close(parent_to_child[1]);
-            close(child_to_parent[0]);
+    nlohmann::json TBP_info();
 
-            dup2(parent_to_child[0], STDIN_FILENO);
-            dup2(child_to_parent[1], STDOUT_FILENO);
+    void TBP_suggest();
 
-            execl(path, NULL);
-            perror("execl");
-            exit(1);
-        } else {
-            // parent
-            close(parent_to_child[0]);
-            close(child_to_parent[1]);
+    std::vector<Piece> TBP_suggestion();
 
-            to_child = fdopen(parent_to_child[1], "w");
-            from_child = fdopen(child_to_parent[0], "r");
+    void TBP_start(const Board& board, const std::array<PieceType, 5>& queue, std::optional<Piece> hold = std::nullopt, bool back_to_back = false, int combo = 0);
 
-            if (to_child == NULL || from_child == NULL) {
-                perror("fdopen");
-                exit(1);
-            }
-        }
-#endif
-    }
+    void TBP_new_piece(PieceType t);
 
-    inline void send(std::string& message) {
-#ifdef __linux__
-        fprintf(to_child, "%s\n", message.c_str());
-        fflush(to_child);
-#endif
-    }
+    // stops the game itself, a new game CAN be started by sending a start command
+    void TBP_stop();
 
-    inline std::string receive() {
-#ifdef __linux__
-        std::string message;
-        char buffer[1024];
-        fgets(buffer, 1024, from_child);
-        message = buffer;
-        return message;
-#endif
-    }
+   private:
+    // if this is sent, the game will end and the bot will be disconnected
+    void TBP_quit();
 
-    inline void stop() {
-#ifdef __linux__
-        fclose(to_child);
-        fclose(from_child);
-#endif
-    }
+   private:
+    void send(std::string message);
+    std::string receive();
 
 #ifdef __linux__
     int parent_to_child[2]{};
@@ -81,6 +48,10 @@ class Bot {
     FILE* to_child{};
     FILE* from_child{};
 #endif
+
+    std::string name;
+    std::string author;
+    std::string version;
    public:
     bool running = false;
 };
