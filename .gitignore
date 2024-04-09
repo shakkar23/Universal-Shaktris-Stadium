@@ -12,3 +12,5 @@ _deps
 out
 .vs
 enc_temp_folder
+build
+.vscode
