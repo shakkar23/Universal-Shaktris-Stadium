@@ -93,24 +93,24 @@ class Stadium {
         return board;
     }
 
-    inline void draw_board_background(Window& window, Rect board) {
+    inline void draw_board_background(Window& window, Rect area) {
         // first two columns are for rendering the hold
         // the next 10 columns are for the board
         // the last two columns are for the queue
 
-        FPoint cell_size = {board.w / 14.0f, board.h / 20.0f};
+        FPoint cell_size = { area.w / 14.0f, area.h / 20.0f};
 
         // draw filled board
         {
             window.setDrawColor(0, 0, 0, 255);
-            Rect board = {board.x + 2 * cell_size.x, board.y, 10 * cell_size.x, 20 * cell_size.y};
+            Rect board = { area.x + 2 * cell_size.x, area.y, 10 * cell_size.x, 20 * cell_size.y};
             window.drawRectFilled(board);
         }
 
         window.setDrawColor(255, 255, 255, 255);
         for (int i = 2; i < 12; i++) {
             for (int j = 0; j < 20; j++) {
-                Rect cell = {board.x + i * cell_size.x, board.y + j * cell_size.y, ceil(cell_size.x), ceil(cell_size.y)};
+                Rect cell = { area.x + i * cell_size.x, area.y + j * cell_size.y, ceil(cell_size.x), ceil(cell_size.y)};
                 window.drawRect(cell);
             }
         }
@@ -118,13 +118,38 @@ class Stadium {
         // draw hold background
         {
             window.setDrawColor(0, 0, 0, 255);
-            Rect hold = {board.x, board.y + cell_size.y, 2 * cell_size.x, 2 * cell_size.y};
+            Rect hold = { area.x, area.y + cell_size.y, 2 * cell_size.x, 2 * cell_size.y};
             window.drawRectFilled(hold);
 
             window.setDrawColor(255, 255, 255, 255);
             window.drawRect(hold);
         }
     }
+    inline void draw_stasis_piece(Window& window, Rect area, Piece& piece) {
+		
+        // assume that the area is the hold area and we render the piece with (0, 0) as the center, the grid being a 5x5 grid
+        FPoint cell_size = { area.w / 5.0f, area.h / 5.0f};
+
+        window.setDrawColor(0, 0, 0, 255);
+        Rect hold = { area.x, area.y, 2 * cell_size.x, 2 * cell_size.y};
+        window.drawRectFilled(hold);
+
+        window.setDrawColor(255, 255, 255, 255);
+        window.drawRect(hold);
+
+        Color col = get_color(piece.type);
+        window.setDrawColor(col.r, col.g, col.b, col.a);
+
+        for (auto& mino : piece.minos) {
+            Rect cell = {
+				int(ceil(area.x + (2 + mino.x) * cell_size.x)),
+				int(ceil(area.y + (2 - mino.y) * cell_size.y)),
+				(int)ceil(cell_size.x), (int)ceil(cell_size.y)};
+
+			window.drawRectFilled(cell);
+		}
+
+	}
 
     inline void draw_board(Window& window, Rect board, Board& b) {
         FPoint cell_size = {board.w / 14.0, board.h / 20.0};
