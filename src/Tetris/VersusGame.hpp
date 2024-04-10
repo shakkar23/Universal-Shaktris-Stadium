@@ -9,63 +9,63 @@
 #include "rng.hpp"
 
 enum Outcomes {
-    P1_WIN,
-    P2_WIN,
-    DRAW,
-    NONE
+	P1_WIN,
+	P2_WIN,
+	DRAW,
+	NONE
 };
 
 class VersusGame {
 public:
- VersusGame() {
-     p1_rng.rng = std::random_device()();
-     p1_rng.makebag();
+	VersusGame() {
+		p1_rng.rng = std::random_device()();
+		p1_rng.makebag();
 
-     p1_game.current_piece = p1_rng.GetPiece();
-     for (auto& p : p1_game.queue) {
-         p = p1_rng.GetPiece();
-     }
+		p1_game.current_piece = p1_rng.GetPiece();
+		for (auto& p : p1_game.queue) {
+			p = p1_rng.GetPiece();
+		}
 
-     p2_rng.rng = std::random_device()();
-     p2_rng.makebag();
+		p2_rng.rng = std::random_device()();
+		p2_rng.makebag();
 
-     p2_game.current_piece = p2_rng.GetPiece();
-     for (auto& p : p2_game.queue) {
-         p = p2_rng.GetPiece();
-     }
- }
-    Game p1_game;
-    Game p2_game;
+		p2_game.current_piece = p2_rng.GetPiece();
+		for (auto& p : p2_game.queue) {
+			p = p2_rng.GetPiece();
+		}
+	}
+	Game p1_game;
+	Game p2_game;
 
-    Move p1_move = Move(Piece(PieceType::Empty), false);
-    Move p2_move = Move(Piece(PieceType::Empty), false);
+	Move p1_move = Move(Piece(PieceType::Empty), false);
+	Move p2_move = Move(Piece(PieceType::Empty), false);
 
 	RNG p1_rng;
 	RNG p2_rng;
 
-    double p1_atk = 0;
-    double p2_atk = 0;
+	double p1_atk = 0;
+	double p2_atk = 0;
 
-    int p1_meter = 0;
-    int p2_meter = 0;
+	int p1_meter = 0;
+	int p2_meter = 0;
 
-    int turn = 0;
-    bool game_over = false;
+	int turn = 0;
+	bool game_over = false;
 
-    // get attack per piece
-    double inline get_app(int id) const {
-        return id == 0 ? p1_atk / turn : p2_atk / turn;
-    }
+	// get attack per piece
+	double inline get_app(int id) const {
+		return id == 0 ? p1_atk / turn : p2_atk / turn;
+	}
 
-    double inline get_b2b(int id) const {
-        return id == 0 ? p1_game.stats.b2b : p2_game.stats.b2b;
-    }
+	double inline get_b2b(int id) const {
+		return id == 0 ? p1_game.stats.b2b : p2_game.stats.b2b;
+	}
 
-    const inline Game& get_game(int id) const {
-        return id == 0 ? p1_game : p2_game;
-    }
+	const inline Game& get_game(int id) const {
+		return id == 0 ? p1_game : p2_game;
+	}
 
-    void set_move(int id, Move move)
+	void set_move(int id, Move move)
 	{
 		if (id == 0) {
 			p1_move = move;
@@ -106,11 +106,12 @@ public:
 		turn += 1;
 
 		int p1_cleared_lines = 0;
+		bool p1_first_hold = false;
 		// player 1 move
 		if (!p1_move.null_move) {
-			spinType spin = p1_game.current_piece.spin;
+			spinType spin = p1_move.piece.spin;
 
-			p1_game.place_piece(p1_move.piece);
+			p1_first_hold = p1_game.place_piece(p1_move.piece);
 			p1_cleared_lines = p1_game.board.clearLines();
 
 			bool pc = true;
@@ -129,18 +130,21 @@ public:
 				//std::cout << "p1 did perfect clear" << std::endl;
 			}
 
-			int dmg = p1_game.damage_sent(p1_cleared_lines, spin, pc);
+			int dmg = 0; p1_game.damage_sent(p1_cleared_lines, spin, pc);
 
 			p1_atk += dmg;
 
 			p2_meter += dmg;
 		}
+
+
 		int p2_cleared_lines = 0;
+		bool p2_first_hold = false;
 		// player 2 move
 		if (!p2_move.null_move) {
 			spinType spin = p2_game.current_piece.spin;
 
-			p2_game.place_piece(p2_move.piece);
+			p2_first_hold = p2_game.place_piece(p2_move.piece);
 			p2_cleared_lines = p2_game.board.clearLines();
 
 			bool pc = true;
@@ -159,7 +163,7 @@ public:
 				//std::cout << "p2 did perfect clear" << std::endl;
 			}
 
-			int dmg = p2_game.damage_sent(p2_cleared_lines, spin, pc);
+			int dmg = 0; p2_game.damage_sent(p2_cleared_lines, spin, pc);
 
 			p2_atk += dmg;
 
@@ -190,12 +194,17 @@ public:
 			}
 		}
 
+		if (p1_first_hold)
+			*(p1_game.queue.end() - 2) = p1_rng.GetPiece();
 		p1_game.queue.back() = p1_rng.GetPiece();
+
+		if(p2_first_hold)
+			*(p2_game.queue.end() - 2) = p2_game.queue.front();
 		p2_game.queue.back() = p2_rng.GetPiece();
 	}
 
 
-    inline std::vector<Move> get_moves(int id) const
+	inline std::vector<Move> get_moves(int id) const
 	{
 		std::vector<Move> moves;
 
@@ -226,7 +235,7 @@ public:
 
 
 
-    inline Outcomes get_winner() const
+	inline Outcomes get_winner() const
 	{
 
 		Outcomes out = Outcomes::NONE;

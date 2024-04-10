@@ -11,10 +11,15 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#elif _WIN32
+#include <windows.h>
 #endif
 
 class Bot {
-   public:
+public:
+
+    bool is_running() const;
+    
     void start(const char* path);
     void stop();
 
@@ -26,18 +31,18 @@ class Bot {
 
     std::vector<Piece> TBP_suggestion();
 
-    void TBP_start(const Board& board, const std::array<PieceType, 5>& queue, std::optional<Piece> hold = std::nullopt, bool back_to_back = false, int combo = 0);
+    void TBP_start(const Board& board, const std::vector<PieceType>& queue, std::optional<Piece> hold = std::nullopt, bool back_to_back = false, int combo = 0);
 
     void TBP_new_piece(PieceType t);
 
     // stops the game itself, a new game CAN be started by sending a start command
     void TBP_stop();
 
-   private:
+private:
     // if this is sent, the game will end and the bot will be disconnected
     void TBP_quit();
 
-   private:
+private:
     void send(std::string message);
     std::string receive();
 
@@ -47,11 +52,16 @@ class Bot {
 
     FILE* to_child{};
     FILE* from_child{};
+#elif _WIN32
+    HANDLE g_hChildStd_IN_Rd = NULL;
+    HANDLE g_hChildStd_IN_Wr = NULL;
+    HANDLE g_hChildStd_OUT_Rd = NULL;
+    HANDLE g_hChildStd_OUT_Wr = NULL;
 #endif
+
 
     std::string name;
     std::string author;
     std::string version;
-   public:
     bool running = false;
 };

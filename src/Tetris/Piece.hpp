@@ -13,14 +13,6 @@ public:
         minos = piece_definitions[static_cast<size_t>(type)];
         spin = spinType::null;
     }
-    Piece(PieceType type, Coord position, RotationDirection rotation, spinType spin) 
-    : type(type), position(position), rotation(rotation), spin(spin) {
-        minos = piece_definitions[static_cast<size_t>(type)];
-
-        for (int i = 0; i < static_cast<int>(rotation); i++) {
-            rotate(TurnDirection::Right);
-        }
-    }
 
     Piece() = delete;
     Piece(const Piece& other) = default;

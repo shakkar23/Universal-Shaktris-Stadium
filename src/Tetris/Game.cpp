@@ -18,43 +18,25 @@ void Game::place_piece() {
     queue.back() = PieceType::Empty;
 }
 
-void Game::do_hold() {
 
-    if (hold) {
-        std::swap(hold.value(), current_piece);
-        current_piece = Piece(current_piece.type);
-    }
-    else {
-        hold = current_piece;
-
-        // shift queue
-        current_piece = queue.front();
-
-        std::shift_left(queue.begin(), queue.end(), 1);
-
-        queue.back() = PieceType::Empty;
-    }
-}
-
-void Game::place_piece(Piece& piece) {
+bool Game::place_piece(Piece& piece) {
+    bool first_hold = false;
     if (piece.type != current_piece.type) {
-        if (hold) {
-            std::swap(hold.value(), current_piece);
-        }
-        else {
-            hold = current_piece;
-            // shift queue
-            current_piece = queue.front();
-
+        if (!hold.has_value())
+        {  // shift queue
             std::shift_left(queue.begin(), queue.end(), 1);
 
             queue.back() = PieceType::Empty;
+
+            first_hold = true;
         }
+        hold = current_piece;
     }
 
     current_piece = piece;
-
     place_piece();
+
+    return first_hold;
 }
 
 bool Game::collides(const Board& board, const Piece& piece) const {

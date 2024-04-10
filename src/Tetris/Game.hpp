@@ -37,10 +37,8 @@ public:
 
     void place_piece();
 
-    void place_piece(Piece& piece);
-
-    void do_hold();
-
+    bool place_piece(Piece& piece);
+    
     bool collides(const Board& board, const Piece& piece) const;
 
     void rotate(Piece& piece, TurnDirection dir) const;

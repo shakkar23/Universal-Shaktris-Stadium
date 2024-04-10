@@ -3,6 +3,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 
 #include "Piece.hpp"
 #include "pext.hpp"

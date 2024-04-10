@@ -9,7 +9,8 @@
 #include "VersusGame.hpp"
 #include "Window.hpp"
 #include "inputs.hpp"
-
+#undef min
+#undef max
 using Rect = SDL_Rect;
 
 using Point = SDL_Point;
@@ -18,13 +19,13 @@ using Color = SDL_Color;
 
 constexpr float board_aspect_ratio = 14. / 20.;
 class Stadium {
-   private:
+private:
     VersusGame game;
 
     bool running = false;
 
     // pieces per second that the bots will play at
-    float pps = 2.0;
+    float pps = 3;
     // the frame count for the bots to determine when they should move
     int frameCount = 0;
 
@@ -33,48 +34,36 @@ class Stadium {
 
     int windowWidth{}, windowHeight{};
 
-   public:
+public:
     inline bool update(Shakkar::inputs& inputs) {
         if (!running) {
             if (inputs.getKey(SDLK_RETURN).pressed) {
-                if (player_1.running && player_2.running) {
+                if (player_1.is_running() && player_2.is_running()) {
                     game = VersusGame();
 
                     running = true;
+                    std::vector<PieceType> tbp_queue(Game::queue_size + 1);
+                    tbp_queue[0] = game.p1_game.current_piece.type;
+                    for (int i = 0; i < Game::queue_size; i++) {
+						tbp_queue[i+1] = game.p1_game.queue[i];
+					}
+                    player_1.TBP_start(game.p1_game.board, tbp_queue);
 
-                    player_1.TBP_start(game.p1_game.board, game.p1_game.queue);
-                    player_2.TBP_start(game.p2_game.board, game.p2_game.queue);
-
-                    // wait for the bots to start
-                    std::this_thread::sleep_for(std::chrono::seconds(5));
-
-                    player_1.TBP_suggest();
-                    std::vector<Piece> suggestion_1 = player_1.TBP_suggestion();
-
-                    player_2.TBP_suggest();
-                    std::vector<Piece> suggestion_2 = player_2.TBP_suggestion();
-
-                    if (suggestion_1.size() > 0 && suggestion_2.size() > 0) {
-                        Piece move = suggestion_1[0];
-
-                        if (move.type != game.p1_game.current_piece.type) {
-                            if (game.p1_game.hold) {
-                                game.p1_game.do_hold();
-                            } else {
-                                game.p1_game.do_hold();
-                                game.p1_game.queue.back() = game.p1_rng.GetPiece();
-                            }
-                        }
-                        game.p1_game.current_piece = move;
-                        game.p1_game.place_piece();
+                    tbp_queue[0] = game.p2_game.current_piece.type;
+                    for (int i = 0; i < Game::queue_size; i++) {
+                        tbp_queue[i + 1] = game.p2_game.queue[i];
                     }
+                    player_2.TBP_start(game.p2_game.board, tbp_queue);
+
+                    frameCount = 0;
                 }
             }
             std::string file = inputs.getDroppedFile();
             if (!file.empty()) {
                 if (inputs.getMouse().x < windowWidth / 2) {
                     player_1.start(file.c_str());
-                } else {
+                }
+                else {
                     player_2.start(file.c_str());
                 }
             }
@@ -87,8 +76,43 @@ class Stadium {
 
             // if need to move then ask the bots for moves
             if (frameCount >= UPDATES_PER_SECOND / pps) {
-                // TODO
+
+                player_1.TBP_suggest();
+                Piece suggestion_1 = player_1.TBP_suggestion()[0];
+
+                player_2.TBP_suggest();
+                Piece suggestion_2 = player_2.TBP_suggestion()[0];
+
+                game.p1_move.null_move = false;
+                game.p1_move.piece = suggestion_1;
+
+                bool p1_first_hold = false;
+                if (!game.p1_game.hold && suggestion_1.type != game.p1_game.current_piece.type) {
+                    p1_first_hold = true;
+                }
+
+                bool p2_first_hold = false;
+                if (!game.p2_game.hold && suggestion_2.type != game.p2_game.current_piece.type) {
+                    p2_first_hold = true;
+                }
+
+                game.p2_move.null_move = false;
+                game.p2_move.piece = suggestion_2;
+
+                game.play_moves();
                 frameCount = 0;
+
+                if (p1_first_hold)
+                    player_1.TBP_new_piece(game.p1_game.queue[3]);
+                player_1.TBP_new_piece(game.p1_game.queue.back());
+                player_1.TBP_play(suggestion_1);
+
+                if (p2_first_hold)
+                    player_2.TBP_new_piece(game.p2_game.queue[3]);
+                player_2.TBP_new_piece(game.p2_game.queue.back());
+                player_2.TBP_play(suggestion_2);
+
+
             }
 
             frameCount++;
@@ -97,25 +121,25 @@ class Stadium {
         return true;
     }
 
-   private:
+private:
     inline Color get_color(PieceType type) {
         switch (type) {
-            case PieceType::I:
-                return {0, 255, 255, 255};
-            case PieceType::J:
-                return {0, 0, 255, 255};
-            case PieceType::L:
-                return {255, 165, 0, 255};
-            case PieceType::O:
-                return {255, 255, 0, 255};
-            case PieceType::S:
-                return {0, 255, 0, 255};
-            case PieceType::T:
-                return {128, 0, 128, 255};
-            case PieceType::Z:
-                return {255, 0, 0, 255};
-            default:
-                return {0, 0, 0, 0};
+        case PieceType::I:
+            return { 0, 255, 255, 255 };
+        case PieceType::J:
+            return { 0, 0, 255, 255 };
+        case PieceType::L:
+            return { 255, 165, 0, 255 };
+        case PieceType::O:
+            return { 255, 255, 0, 255 };
+        case PieceType::S:
+            return { 0, 255, 0, 255 };
+        case PieceType::T:
+            return { 128, 0, 128, 255 };
+        case PieceType::Z:
+            return { 255, 0, 0, 255 };
+        default:
+            return { 0, 0, 0, 0 };
         }
     }
 
@@ -124,12 +148,13 @@ class Stadium {
         if ((float)parent.w / parent.h > aspect_ratio) {
             height = std::min(parent.h, int(parent.w / aspect_ratio));
             width = int(height * aspect_ratio);
-        } else {
+        }
+        else {
             width = std::min(parent.w, int(parent.h * aspect_ratio));
             height = int(width / aspect_ratio);
         }
 
-        Rect board = {parent.x + (parent.w - width) / 2, parent.y + (parent.h - height) / 2, width, height};
+        Rect board = { parent.x + (parent.w - width) / 2, parent.y + (parent.h - height) / 2, width, height };
 
         return board;
     }
@@ -139,7 +164,7 @@ class Stadium {
         // the next 10 columns are for the board
         // the last two columns are for the queue
 
-        FPoint cell_size = {area.w / 14.0f, area.h / 20.0f};
+        FPoint cell_size = { area.w / 14.0f, area.h / 20.0f };
 
         // draw filled board
         {
@@ -148,7 +173,7 @@ class Stadium {
                 int(area.x + 2 * cell_size.x),
                 int(area.y),
                 int(10 * cell_size.x),
-                int(20 * cell_size.y)};
+                int(20 * cell_size.y) };
             window.drawRectFilled(board);
         }
 
@@ -159,14 +184,14 @@ class Stadium {
                     int(area.x + i * cell_size.x),
                     int(area.y + j * cell_size.y),
                     int(ceil(cell_size.x)),
-                    int(ceil(cell_size.y))};
+                    int(ceil(cell_size.y)) };
                 window.drawRect(cell);
             }
         }
     }
     inline void draw_stasis_piece(Window& window, Rect area, std::optional<Piece> piece) {
         // assume that the area is the hold area and we render the piece with (0, 0) as the center, the grid being a 5x5 grid
-        FPoint cell_size = {area.w / 5.0f, area.h / 5.0f};
+        FPoint cell_size = { area.w / 5.0f, area.h / 5.0f };
 
         window.setDrawColor(0, 0, 0, 255);
         window.drawRectFilled(area);
@@ -183,22 +208,22 @@ class Stadium {
             Rect cell = {
                 int(ceil(area.x + (2 + mino.x) * cell_size.x)),
                 int(ceil(area.y + (2 - mino.y) * cell_size.y)),
-                (int)ceil(cell_size.x), (int)ceil(cell_size.y)};
+                (int)ceil(cell_size.x), (int)ceil(cell_size.y) };
 
             window.drawRectFilled(cell);
         }
     }
 
     inline void draw_board(Window& window, Rect board, Board& b) {
-        FPoint cell_size = {board.w / 14.0f, board.h / 20.0f};
-        Point board_point = {int(board.x + cell_size.x * 2), int(board.y + board.h)};
+        FPoint cell_size = { board.w / 14.0f, board.h / 20.0f };
+        Point board_point = { int(board.x + cell_size.x * 2), int(board.y + board.h) };
 
         window.setDrawColor(100, 100, 100, 255);
 
         for (int i = 0; i < 10; i++) {
             for (int j = 0; j < 20; j++) {
                 if (b.get(i, j) != 0) {
-                    Rect cell = {int(ceil(board_point.x + i * cell_size.x)), int(ceil(board_point.y - (j + 1) * cell_size.y)), (int)ceil(cell_size.x), (int)ceil(cell_size.y)};
+                    Rect cell = { int(ceil(board_point.x + i * cell_size.x)), int(ceil(board_point.y - (j + 1) * cell_size.y)), (int)ceil(cell_size.x), (int)ceil(cell_size.y) };
                     window.drawRectFilled(cell);
                 }
             }
@@ -206,13 +231,13 @@ class Stadium {
     }
 
     void draw_piece(Window& window, Rect area, Piece piece) {
-        FPoint cell_size = {area.w / 14.0f, area.h / 20.0f};
+        FPoint cell_size = { area.w / 14.0f, area.h / 20.0f };
         Rect board = {
             int(area.x + 2.0f * cell_size.x),
             int(area.y),
             int(10.0f * cell_size.x),
-            int(20.0f * cell_size.y)};
-        Point board_point = {board.x, board.y + board.h};
+            int(20.0f * cell_size.y) };
+        Point board_point = { board.x, board.y + board.h };
         Color col = get_color(piece.type);
         window.setDrawColor(col.r, col.g, col.b, col.a);
 
@@ -220,13 +245,36 @@ class Stadium {
             Rect cell = {
                 int(ceil(board_point.x + (piece.position.x + mino.x) * cell_size.x)),
                 int(ceil(board_point.y - (piece.position.y + mino.y) * cell_size.y)),
-                (int)ceil(cell_size.x), (int)ceil(cell_size.y)};
+                (int)ceil(cell_size.x), (int)ceil(cell_size.y) };
 
             window.drawRectFilled(cell);
         }
     }
 
-   public:
+    void draw_hold_and_queue(Window& window, Game& player, Rect& p1_area) {
+        {
+            FPoint cell_size = { p1_area.w / 14.0f, p1_area.h / 20.0f };
+            Rect hold = {
+                int(p1_area.x),
+                int(p1_area.y + cell_size.y),
+                int(2 * cell_size.x),
+                int(2 * cell_size.y) };
+
+            draw_stasis_piece(window, hold, player.hold);
+
+            Rect queue = {
+                int(p1_area.x + 12 * cell_size.x),
+                int(ceil(p1_area.y + 2 * cell_size.y)),
+                int(2 * cell_size.x),
+                int(ceil(2 * 5 * cell_size.y)) };
+
+            for (int i = 0; i < 5; i++) {
+                std::optional<Piece> queue_piece = Piece(player.queue[i]);
+                draw_stasis_piece(window, { queue.x, int(ceil(queue.y + i * 2 * cell_size.y)), queue.w, int(ceil(2 * cell_size.y)) }, queue_piece);
+            }
+        }
+    }
+public:
     inline void render(Window& window) {
         window.getWindowSize(windowWidth, windowHeight);
 
@@ -236,7 +284,7 @@ class Stadium {
 
         // draw player 1
 
-        Rect p1_zone = {int(windowWidth * 0.01), int(windowHeight * 0.01), int(windowWidth * 0.48), int(windowHeight * .98)};
+        Rect p1_zone = { int(windowWidth * 0.01), int(windowHeight * 0.01), int(windowWidth * 0.48), int(windowHeight * .98) };
         window.drawRectFilled(p1_zone);
         Rect p1_area = getInnerRect(p1_zone, board_aspect_ratio);
         draw_board_background(window, p1_area);
@@ -247,7 +295,7 @@ class Stadium {
         // draw player 2
 
         window.setDrawColor(60, 50, 200, 255);
-        Rect p2 = {int(windowWidth * 0.51), int(windowHeight * 0.01), int(windowWidth * 0.48), int(windowHeight * .98)};
+        Rect p2 = { int(windowWidth * 0.51), int(windowHeight * 0.01), int(windowWidth * 0.48), int(windowHeight * .98) };
         window.drawRectFilled(p2);
         Rect p2_area = getInnerRect(p2, board_aspect_ratio);
         draw_board_background(window, p2_area);
@@ -257,28 +305,5 @@ class Stadium {
 
         window.pop_color();
         window.display();
-    }
-    void draw_hold_and_queue(Window& window, Game& player, Rect& p1_area) {
-        {
-            FPoint cell_size = {p1_area.w / 14.0f, p1_area.h / 20.0f};
-            Rect hold = {
-                int(p1_area.x),
-                int(p1_area.y + cell_size.y),
-                int(2 * cell_size.x),
-                int(2 * cell_size.y)};
-
-            draw_stasis_piece(window, hold, player.hold);
-
-            Rect queue = {
-                int(p1_area.x + 12 * cell_size.x),
-                int(ceil(p1_area.y + 2 * cell_size.y)),
-                int(2 * cell_size.x),
-                int(ceil(2 * 5 * cell_size.y))};
-
-            for (int i = 0; i < 5; i++) {
-                std::optional<Piece> queue_piece = Piece(player.queue[i]);
-                draw_stasis_piece(window, {queue.x, int(ceil(queue.y + i * 2 * cell_size.y)), queue.w, int(ceil(2 * cell_size.y))}, queue_piece);
-            }
-        }
     }
 };
