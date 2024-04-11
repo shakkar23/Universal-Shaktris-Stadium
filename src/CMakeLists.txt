@@ -1,6 +1,6 @@
 find_package(SDL2 CONFIG REQUIRED)
 find_package(SDL_ttf REQUIRED)
-set(UCI_SOURCES
+set(UTS_SOURCES
 	"main.cpp"
     "Tetris/Game.cpp"
     "SDL2/Window.cpp"
@@ -12,7 +12,7 @@ set(UCI_SOURCES
  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64-v3")
 
 
-add_executable("test" ${UCI_SOURCES})
+add_executable(test ${UTS_SOURCES})
 
 target_link_libraries(test PRIVATE SDL2::SDL2 SDL2::SDL2main SDL2_ttf)
 
