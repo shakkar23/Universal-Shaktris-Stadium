@@ -1,8 +1,9 @@
 //not my code
-#include <SDL2/SDL.h>
-#include <iostream>
-
 #include "Window.hpp"
+
+#include <SDL2/SDL.h>
+
+#include <iostream>
 
 Window::Window(const char* p_title, const int p_w, const int p_h)
     : window(NULL), renderer(NULL) {
@@ -10,8 +11,7 @@ Window::Window(const char* p_title, const int p_w, const int p_h)
         SDL_CreateWindow(p_title, SDL_WINDOWPOS_UNDEFINED,
             SDL_WINDOWPOS_UNDEFINED, p_w, p_h, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
     if (this->window == NULL) {
-        std::cout << "Window failed to init. Error: " << SDL_GetError()
-            << std::endl;
+        std::cout << "Window failed to init. Error: " << SDL_GetError() << std::endl;
     }
 
     renderer = SDL_CreateRenderer(
@@ -151,6 +151,11 @@ void Window::drawRectFilled(SDL_Rect rec)
 	SDL_RenderFillRect(renderer, &rec);
 }
 
+void Window::drawText(SDL_Rect rec) {
+    // load font at location ./assets/font.ttf
+    TTF_Font* font = TTF_OpenFont("./assets/font.ttf", NULL);
+
+}
 SDL_Texture* Window::CreateTextureFromSurface(SDL_Surface* surface) {
     return SDL_CreateTextureFromSurface(this->renderer, surface);
 }

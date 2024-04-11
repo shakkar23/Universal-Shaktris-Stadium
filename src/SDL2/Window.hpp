@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 
 #include <stack>
 
@@ -25,6 +26,7 @@ public:
     void drawCircle(int x, int y, int r);
     void drawRect(SDL_Rect rec);
     void drawRectFilled(SDL_Rect rec);
+    void drawText(SDL_Rect rec);
     // utility
     SDL_Texture* CreateTextureFromSurface(SDL_Surface* surface);
 
@@ -38,6 +40,7 @@ public:
    private:
     SDL_Window* window;
     SDL_Renderer* renderer;
+    
 
     SDL_Renderer* getRenderer();
 

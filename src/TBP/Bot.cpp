@@ -90,8 +90,11 @@ void Bot::start(const char* path) {
 
 #endif
 
+    auto info = TBP_info();
 
-    [[maybe_unused]] auto info = TBP_info();
+    author = info["author"].get<std::string>();
+    name = info["name"].get<std::string>();
+    version = info["version"].get<std::string>();
 
     running = true;
 }
