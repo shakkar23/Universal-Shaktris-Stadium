@@ -2,7 +2,7 @@ find_package(SDL2 CONFIG REQUIRED)
 
 if(UNIX AND NOT APPLE)
     find_package(SDL_ttf REQUIRED)
-    set(TTF_LIBS ${SDL_TTF_LIBRARIES})
+    set(TTF_LIBS SDL2_ttf)
 else()
     find_package(SDL2_ttf CONFIG REQUIRED)
 	set(TTF_LIBS SDL2_ttf::SDL2_ttf)
