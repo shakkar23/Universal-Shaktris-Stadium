@@ -1,5 +1,6 @@
 find_package(SDL2 CONFIG REQUIRED)
 find_package(SDL_ttf REQUIRED)
+
 set(UTS_SOURCES
 	"main.cpp"
     "Tetris/Game.cpp"
@@ -9,12 +10,11 @@ set(UTS_SOURCES
 )
 
 
- set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64-v3")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64-v3")
 
 
 add_executable(test ${UTS_SOURCES})
-
-target_link_libraries(test PRIVATE SDL2::SDL2 SDL2::SDL2main SDL2_ttf)
+target_link_libraries(test PRIVATE ${SDL2_LIBRARIES} SDL2::SDL2main ${SDL_TTF_LIBRARIES})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/TBP)

@@ -1,0 +1,1 @@
+/usr/bin/g++  -march=x86-64-v3 -g CMakeFiles/test.dir/main.cpp.o CMakeFiles/test.dir/Tetris/Game.cpp.o CMakeFiles/test.dir/SDL2/Window.cpp.o CMakeFiles/test.dir/SDL2/inputs.cpp.o CMakeFiles/test.dir/TBP/Bot.cpp.o -o test   -L/usr/lib/gcc/x86_64-linux-gnu/11  -L/usr/lib/x86_64-linux-gnu  -lSDL2 /usr/lib/x86_64-linux-gnu/libSDL2main.a /usr/lib/x86_64-linux-gnu/libSDL_ttf.so 
