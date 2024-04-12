@@ -155,18 +155,6 @@ void Bot::stop() {
 #endif
 }
 
-const std::string& Bot::get_name() const {
-    return name;
-}
-
-const std::string& Bot::get_author() const {
-    return author;
-}
-
-const std::string& Bot::get_version() const {
-    return version;
-}
-
 void Bot::TBP_play(const Piece& piece) {
     nlohmann::json play;
     auto px = piece.position.x;

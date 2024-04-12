@@ -9,6 +9,8 @@
 #include "VersusGame.hpp"
 #include "Window.hpp"
 #include "inputs.hpp"
+#undef min
+#undef max
 using Rect = SDL_Rect;
 
 using Point = SDL_Point;
@@ -137,6 +139,21 @@ class Stadium {
         }
     }
 
+    inline Rect getInnerRect(Rect parent, float aspect_ratio) {
+        int height, width;
+        if ((float)parent.w / parent.h > aspect_ratio) {
+            height = std::min(parent.h, int(parent.w / aspect_ratio));
+            width = int(height * aspect_ratio);
+        } else {
+            width = std::min(parent.w, int(parent.h * aspect_ratio));
+            height = int(width / aspect_ratio);
+        }
+
+        Rect board = {parent.x + (parent.w - width) / 2, parent.y + (parent.h - height) / 2, width, height};
+
+        return board;
+    }
+
     inline void draw_board_background(Window& window, Rect area) {
         // first two columns are for rendering the hold
         // the next 10 columns are for the board
@@ -261,45 +278,39 @@ class Stadium {
 
         window.push_color(255, 0, 0, 255);
 
-        {
-            // draw player 1
-            Rect p1_zone = {int(windowWidth * 0.01), int(windowHeight * 0.01), int(windowWidth * 0.48), int(windowHeight * .98)};
-            window.drawRectFilled(p1_zone);
-            Rect p1_general_area = window.getInnerRect(p1_zone, (14.0f / 21.0f));
+        // draw player 1
 
-            Rect p1_name_area = {p1_general_area.x, p1_general_area.y + p1_general_area.h - (p1_general_area.h / 21), p1_general_area.w, p1_general_area.h / 21};
-            window.setDrawColor(0, 0, 0, 255);
-            window.drawRectFilled(p1_name_area);
-            window.setDrawColor(255, 255, 255, 255);
-            window.drawText(player_1.get_name().empty() ? "NONE" : player_1.get_name(), p1_name_area);
+        Rect p1_zone = {int(windowWidth * 0.01), int(windowHeight * 0.01), int(windowWidth * 0.48), int(windowHeight * .98)};
+        window.drawRectFilled(p1_zone);
+        Rect p1_general_area = getInnerRect(p1_zone, (14.0f / 21.0f));
 
-            Rect p1_tetris_area = window.getInnerRect(p1_general_area, board_aspect_ratio);
-            p1_tetris_area.y = p1_general_area.y;
-            draw_board_background(window, p1_tetris_area);
-            draw_piece(window, p1_tetris_area, game.p1_game.current_piece);
-            draw_board(window, p1_tetris_area, game.p1_game.board);
-            draw_hold_and_queue(window, game.p1_game, p1_tetris_area);
-        }
-        {
-            // draw player 2
+        Rect p1_name_area = {p1_general_area.x, p1_general_area.y + p1_general_area.h - (p1_general_area.h / 21), p1_general_area.w, p1_general_area.h / 21};
+        window.setDrawColor(0, 0, 0, 255);
+        window.drawRectFilled(p1_name_area);
 
-            window.setDrawColor(60, 50, 200, 255);
-            Rect p2 = {int(windowWidth * 0.51), int(windowHeight * 0.01), int(windowWidth * 0.48), int(windowHeight * .98)};
-            window.drawRectFilled(p2);
-            Rect p2_general_area = window.getInnerRect(p2, (14.0f / 21.0f));
-            Rect p2_name_area = {p2_general_area.x, p2_general_area.y + p2_general_area.h - (p2_general_area.h / 21), p2_general_area.w, p2_general_area.h / 21};
-            window.setDrawColor(0, 0, 0, 255);
-            window.drawRectFilled(p2_name_area);
-            window.setDrawColor(255, 255, 255, 255);
-            window.drawText(player_2.get_name().empty() ? "NONE" : player_2.get_name(), p2_name_area);
+        Rect p1_tetris_area = getInnerRect(p1_general_area, board_aspect_ratio);
+        p1_tetris_area.y = p1_general_area.y;
+        draw_board_background(window, p1_tetris_area);
+        draw_piece(window, p1_tetris_area, game.p1_game.current_piece);
+        draw_board(window, p1_tetris_area, game.p1_game.board);
+        draw_hold_and_queue(window, game.p1_game, p1_tetris_area);
 
-            Rect p2_area = window.getInnerRect(p2_general_area, board_aspect_ratio);
-            p2_area.y = p2_general_area.y;
-            draw_board_background(window, p2_area);
-            draw_piece(window, p2_area, game.p2_game.current_piece);
-            draw_board(window, p2_area, game.p2_game.board);
-            draw_hold_and_queue(window, game.p2_game, p2_area);
-        }
+        // draw player 2
+
+        window.setDrawColor(60, 50, 200, 255);
+        Rect p2 = {int(windowWidth * 0.51), int(windowHeight * 0.01), int(windowWidth * 0.48), int(windowHeight * .98)};
+        window.drawRectFilled(p2);
+        Rect p2_general_area = getInnerRect(p2, (14.0f / 21.0f));
+        Rect p2_name_area = {p2_general_area.x, p2_general_area.y + p2_general_area.h - (p2_general_area.h / 21), p2_general_area.w, p2_general_area.h / 21};
+        window.setDrawColor(0, 0, 0, 255);
+        window.drawRectFilled(p2_name_area);
+
+        Rect p2_area = getInnerRect(p2_general_area, board_aspect_ratio);
+        p2_area.y = p2_general_area.y;
+        draw_board_background(window, p2_area);
+        draw_piece(window, p2_area, game.p2_game.current_piece);
+        draw_board(window, p2_area, game.p2_game.board);
+        draw_hold_and_queue(window, game.p2_game, p2_area);
 
         window.pop_color();
         window.display();

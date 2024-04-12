@@ -13,8 +13,6 @@
 #include <unistd.h>
 #elif _WIN32
 #include <windows.h>
-#undef min
-#undef max
 #endif
 
 class Bot {
@@ -24,9 +22,6 @@ public:
     
     void start(const char* path);
     void stop();
-    const std::string& get_name() const;
-    const std::string& get_author() const;
-    const std::string& get_version() const;
 
     void TBP_play(const Piece& move);
 

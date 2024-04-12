@@ -52,20 +52,9 @@ Window::Window(const char* p_title, const int p_w, const int p_h)
 
     // ...and the surface containing the icon pixel data is no longer required.
     SDL_FreeSurface(surface);
-
-    // open default font at "assets/font.ttf"
-    current_ptsize = 24;
-    default_font = TTF_OpenFont("./assets/fonts/font.ttf", current_ptsize);
-    if (default_font == NULL) {
-        std::cout << "Failed to load font. Error: " << TTF_GetError() << std::endl;
-    }
 }
 
-Window::~Window() {
-    SDL_DestroyRenderer(this->renderer);
-    SDL_DestroyWindow(this->window);
-    TTF_CloseFont(default_font);
-}
+Window::~Window() { SDL_DestroyWindow(this->window); }
 
 int Window::getRefreshrate() {
     int displayIndex = SDL_GetWindowDisplayIndex(this->window);
@@ -162,45 +151,10 @@ void Window::drawRectFilled(SDL_Rect rec)
 	SDL_RenderFillRect(renderer, &rec);
 }
 
-// measure the text with TTF_SizeText to fit the text in the rect
-void Window::drawText(const std::string& str, const SDL_Rect rec) {
-    // i hope this function is fast enough lol, it probably allocates and reallocates a lot of memory
+void Window::drawText(SDL_Rect rec) {
+    // load font at location ./assets/font.ttf
+    TTF_Font* font = TTF_OpenFont("./assets/font.ttf", NULL);
 
-    if (str.empty()) return;
-
-    TTF_CloseFont(default_font);
-    current_ptsize = 2;
-    default_font = TTF_OpenFont("./assets/fonts/font.ttf", current_ptsize);
-
-    int w{}, h{};
-    while (true) {
-        TTF_SizeText(default_font, str.c_str(), &w, &h);
-        if (w > rec.w || h > rec.h) {
-            current_ptsize -= 1;
-            TTF_CloseFont(default_font);
-            default_font = TTF_OpenFont("./assets/fonts/font.ttf", current_ptsize);
-            break;
-        }
-        current_ptsize += 1;
-        TTF_CloseFont(default_font);
-        default_font = TTF_OpenFont("./assets/fonts/font.ttf", current_ptsize);
-    }
-    // get window draw color
-    Uint8 r, g, b, a;
-    SDL_GetRenderDrawColor(renderer, &r, &g, &b, &a);
-    // set font color
-    SDL_Color color = {r, g, b, a};
-    SDL_Surface* surface = TTF_RenderText_Blended(default_font, str.c_str(), color);
-
-    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-
-    SDL_QueryTexture(texture, NULL, NULL, &w, &h);
-    SDL_Rect rect = getInnerRect(rec, (float)w / (float)h);
-
-    SDL_RenderCopy(renderer, texture, NULL, &rect);
-
-    SDL_FreeSurface(surface);
-    SDL_DestroyTexture(texture);
 }
 SDL_Texture* Window::CreateTextureFromSurface(SDL_Surface* surface) {
     return SDL_CreateTextureFromSurface(this->renderer, surface);
@@ -228,19 +182,4 @@ void Window::pop_color() {
     SDL_Color color = colors.top();
     colors.pop();
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-}
-
-SDL_Rect Window::getInnerRect(SDL_Rect parent, float aspect_ratio) {
-    int height, width;
-    if ((float)parent.w / parent.h > aspect_ratio) {
-        height = std::min(parent.h, int(parent.w / aspect_ratio));
-        width = int(height * aspect_ratio);
-    } else {
-        width = std::min(parent.w, int(parent.h * aspect_ratio));
-        height = int(width / aspect_ratio);
-    }
-
-    SDL_Rect board = {parent.x + (parent.w - width) / 2, parent.y + (parent.h - height) / 2, width, height};
-
-    return board;
 }

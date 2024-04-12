@@ -4,7 +4,7 @@
 #include <SDL2/SDL_ttf.h>
 
 #include <stack>
-#include <string>
+
 
 constexpr int UPDATES_PER_SECOND = 60;
 class Window {
@@ -26,7 +26,7 @@ public:
     void drawCircle(int x, int y, int r);
     void drawRect(SDL_Rect rec);
     void drawRectFilled(SDL_Rect rec);
-    void drawText(const std::string& str, const SDL_Rect rec);
+    void drawText(SDL_Rect rec);
     // utility
     SDL_Texture* CreateTextureFromSurface(SDL_Surface* surface);
 
@@ -37,13 +37,10 @@ public:
     void push_color(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
     void pop_color();
 
-    SDL_Rect getInnerRect(SDL_Rect parent, float aspect_ratio);
-
    private:
     SDL_Window* window;
     SDL_Renderer* renderer;
-    TTF_Font* default_font;
-    int current_ptsize;
+    
 
     SDL_Renderer* getRenderer();
 
