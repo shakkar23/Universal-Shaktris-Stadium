@@ -54,7 +54,7 @@ Window::Window(const char* p_title, const int p_w, const int p_h)
     SDL_FreeSurface(surface);
 
     // open default font at "assets/font.ttf"
-    current_ptsize = 24;
+    current_ptsize = 64;
     default_font = TTF_OpenFont("./assets/fonts/font.ttf", current_ptsize);
     if (default_font == NULL) {
         std::cout << "Failed to load font. Error: " << TTF_GetError() << std::endl;
@@ -168,29 +168,14 @@ void Window::drawText(const std::string& str, const SDL_Rect rec) {
 
     if (str.empty()) return;
 
-    TTF_CloseFont(default_font);
-    current_ptsize = 2;
-    default_font = TTF_OpenFont("./assets/fonts/font.ttf", current_ptsize);
-
     int w{}, h{};
-    while (true) {
         TTF_SizeText(default_font, str.c_str(), &w, &h);
-        if (w > rec.w || h > rec.h) {
-            current_ptsize -= 1;
-            TTF_CloseFont(default_font);
-            default_font = TTF_OpenFont("./assets/fonts/font.ttf", current_ptsize);
-            break;
-        }
-        current_ptsize += 1;
-        TTF_CloseFont(default_font);
-        default_font = TTF_OpenFont("./assets/fonts/font.ttf", current_ptsize);
-    }
     // get window draw color
     Uint8 r, g, b, a;
     SDL_GetRenderDrawColor(renderer, &r, &g, &b, &a);
     // set font color
     SDL_Color color = {r, g, b, a};
-    SDL_Surface* surface = TTF_RenderText_Blended(default_font, str.c_str(), color);
+    SDL_Surface* surface = TTF_RenderText_Solid(default_font, str.c_str(), color);
 
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
 

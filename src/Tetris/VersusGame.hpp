@@ -49,7 +49,16 @@ public:
 	int p1_meter = 0;
 	int p2_meter = 0;
 
+	bool p1_accepts_garbage = false;
+	bool p2_accepts_garbage = false;
+
 	int turn = 0;
+	enum class State {
+		DRAW, 
+		P1_WIN,
+		P2_WIN,
+		PLAYING
+	} state = State::PLAYING;
 	bool game_over = false;
 
 	// get attack per piece
@@ -84,17 +93,6 @@ public:
 			return;
 		}
 
-		if (p1_game.collides(p1_game.board, p1_game.current_piece)) {
-			//std::cout << "game lasted: " << turn << std::endl;
-			game_over = true;
-			return;
-		}
-
-		if (p2_game.collides(p2_game.board, p2_game.current_piece)) {
-			//std::cout << "game lasted: " << turn << std::endl;
-			game_over = true;
-			return;
-		}
 
 
 
@@ -130,7 +128,7 @@ public:
 				//std::cout << "p1 did perfect clear" << std::endl;
 			}
 
-			int dmg = 0; p1_game.damage_sent(p1_cleared_lines, spin, pc);
+			int dmg = p1_game.damage_sent(p1_cleared_lines, spin, pc);
 
 			p1_atk += dmg;
 
@@ -140,9 +138,9 @@ public:
 
 		int p2_cleared_lines = 0;
 		bool p2_first_hold = false;
-		// player 2 move
+		// player 1 move
 		if (!p2_move.null_move) {
-			spinType spin = p2_game.current_piece.spin;
+			spinType spin = p2_move.piece.spin;
 
 			p2_first_hold = p2_game.place_piece(p2_move.piece);
 			p2_cleared_lines = p2_game.board.clearLines();
@@ -163,7 +161,7 @@ public:
 				//std::cout << "p2 did perfect clear" << std::endl;
 			}
 
-			int dmg = 0; p2_game.damage_sent(p2_cleared_lines, spin, pc);
+			int dmg = p2_game.damage_sent(p2_cleared_lines, spin, pc);
 
 			p2_atk += dmg;
 
@@ -180,8 +178,13 @@ public:
 		{
 			if (p1_meter > 0)
 			{
+				// player 2 accepts garbage!
 				p1_game.add_garbage(p1_meter, p1_rng.GetRand(10));
 				p1_meter = 0;
+				p1_accepts_garbage = true;
+			}
+			else {
+				p1_accepts_garbage = false;
 			}
 		}
 
@@ -189,8 +192,13 @@ public:
 		{
 			if (p2_meter > 0)
 			{
+				// player 2 accepts garbage!
 				p2_game.add_garbage(p2_meter, p2_rng.GetRand(10));
 				p2_meter = 0;
+				p2_accepts_garbage = true;
+			}
+			else {
+				p2_accepts_garbage = false;
 			}
 		}
 
@@ -199,8 +207,35 @@ public:
 		p1_game.queue.back() = p1_rng.GetPiece();
 
 		if(p2_first_hold)
-			*(p2_game.queue.end() - 2) = p2_game.queue.front();
+			*(p2_game.queue.end() - 2) = p2_rng.GetPiece();
 		p2_game.queue.back() = p2_rng.GetPiece();
+
+
+		bool p1_died = false;
+		if (p1_game.collides(p1_game.board, p1_game.current_piece)) {
+			//std::cout << "game lasted: " << turn << std::endl;
+			game_over = true;
+			p1_died = true;
+		}
+		
+		bool p2_died = false;
+		if (p2_game.collides(p2_game.board, p2_game.current_piece)) {
+			//std::cout << "game lasted: " << turn << std::endl;
+			game_over = true;
+			p2_died = true;
+		}
+
+		if (p1_died && p2_died) {
+			state = State::DRAW;
+		}
+		else if (p1_died) {
+			state = State::P2_WIN;
+		}
+		else if (p2_died) {
+			state = State::P1_WIN;
+		}
+
+		return;
 	}
 
 

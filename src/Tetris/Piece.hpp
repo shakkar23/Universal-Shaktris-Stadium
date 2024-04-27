@@ -9,7 +9,7 @@ public:
     Piece(PieceType type) {
         this->type = type;
         rotation = RotationDirection::North;
-        position = { 10 / 2 - 1, 20 - 2 };
+        position = { 10 / 2 - 1, 20 - 1 };
         minos = piece_definitions[static_cast<size_t>(type)];
         spin = spinType::null;
     }

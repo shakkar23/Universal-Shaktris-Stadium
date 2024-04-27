@@ -127,15 +127,10 @@ std::string Bot::receive() {
     CHAR chBuf[4096]{};
     std::string jsnBuf;
     BOOL bSuccess = FALSE;
-    HANDLE hParentStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
     bSuccess = ReadFile(g_hChildStd_OUT_Rd, chBuf,
         4096, &dwRead, NULL);
     if (!bSuccess || dwRead == 0) return "";
-
-    bSuccess = WriteFile(hParentStdOut, chBuf,
-        dwRead, &dwWritten, NULL);
-    if (!bSuccess) return "";
 
     for (int i = 0; i < dwRead; ++i)
         jsnBuf.push_back(chBuf[i]);
