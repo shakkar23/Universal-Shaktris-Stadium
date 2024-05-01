@@ -30,7 +30,6 @@ int main(int argc, char* argv[]) {
     try
     {
         pps = std::stof(vargs[3]);
-
     }
     catch (const std::exception&)
     {
@@ -116,9 +115,6 @@ int main(int argc, char* argv[]) {
                 p2_play = true;
             }
 
-
-
-
             bool p1_play = false;
             if (game.p1_accepts_garbage)
             {
@@ -132,11 +128,12 @@ int main(int argc, char* argv[]) {
                 p1_play = true;
             }
 
-
             if (p2_play)
                 player_2.TBP_play(suggestion_2);
+
             if (p1_play)
                 player_1.TBP_play(suggestion_1);
+
             frameCount = 0;
         }
 
@@ -157,29 +154,16 @@ int main(int argc, char* argv[]) {
     case State::GAME_OVER: {
         // save stats about the game here
         if (game.state == VersusGame::State::P1_WIN)
-        {
             num_wins[0]++;
-        }
         else if (game.state == VersusGame::State::P2_WIN)
-        {
             num_wins[1]++;
-        }
         else if (game.state == VersusGame::State::DRAW)
-        {
             num_draws++;
-        }
+
         num_games++;
-        std::cout.setstate(std::ios_base::goodbit);
-        std::cout.clear();
         // clear console
         std::cout << "\033[2J\033[1;1H";
-        std::cout <<
-            "Player 1 wins: " << num_wins[0] <<
-            "\nPlayer 2 wins: " << num_wins[1] <<
-            "\nDraws: " << num_draws <<
-            "\nTotal games: " << num_games << std::endl;
-        std::cout.setstate(std::ios_base::failbit);
-
+        std::cout << "Player 1 wins: " << num_wins[0] << "\nPlayer 2 wins: " << num_wins[1] << "\nDraws: " << num_draws << "\nTotal games: " << num_games << std::endl;
 
         game_state = State::SETUP;
     } break;
