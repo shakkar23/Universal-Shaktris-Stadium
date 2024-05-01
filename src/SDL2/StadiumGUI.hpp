@@ -16,7 +16,7 @@ using FPoint = SDL_FPoint;
 using Color = SDL_Color;
 
 constexpr float board_aspect_ratio = 14. / 20.;
-class Stadium {
+class StadiumGUI {
 private:
     VersusGame game;
     enum class GameState {

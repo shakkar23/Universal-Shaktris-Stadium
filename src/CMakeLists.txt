@@ -9,7 +9,7 @@ else()
 endif()
 
 set(UTS_SOURCES
-	"main.cpp"
+    "main.cpp"
     "Tetris/Game.cpp"
     "SDL2/Window.cpp"
     "SDL2/inputs.cpp"
@@ -19,8 +19,16 @@ set(UTS_SOURCES
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64-v3")
 
-add_executable(test ${UTS_SOURCES})
-target_link_libraries(test PRIVATE ${SDL2_LIBRARIES} SDL2::SDL2main ${TTF_LIBS})
+add_executable(sdl2_stadium ${UTS_SOURCES})
+target_link_libraries(sdl2_stadium PRIVATE ${SDL2_LIBRARIES} SDL2::SDL2main ${TTF_LIBS})
+
+set(UTS_CLI_SOURCES
+    "Tetris/Game.cpp"
+    "cli_main.cpp"
+    "TBP/Bot.cpp"
+)
+
+add_executable(sdl2_stadium_cli ${UTS_CLI_SOURCES} )
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/TBP)

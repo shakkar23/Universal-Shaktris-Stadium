@@ -2,7 +2,7 @@
 #include <unordered_map>
 
 #include "SDL2/SDL.h"
-#include "Stadium.hpp"
+#include "StadiumGUI.hpp"
 #include "VersusGame.hpp"
 #include "Window.hpp"
 #include "inputs.hpp"
@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
     } sdl_quit;
     Window window("UTS", 800, 600);
 
-    Stadium game;
+    StadiumGUI game;
 
     Shakkar::inputs input;
 
