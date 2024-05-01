@@ -10,7 +10,7 @@ endif()
 
 set(UTS_SOURCES
     "main.cpp"
-    "Tetris/Game.cpp"
+    "Shaktris/Game.cpp"
     "SDL2/Window.cpp"
     "SDL2/inputs.cpp"
     "TBP/Bot.cpp"
@@ -23,7 +23,7 @@ add_executable(sdl2_stadium ${UTS_SOURCES})
 target_link_libraries(sdl2_stadium PRIVATE ${SDL2_LIBRARIES} SDL2::SDL2main ${TTF_LIBS})
 
 set(UTS_CLI_SOURCES
-    "Tetris/Game.cpp"
+    "Shaktris/Game.cpp"
     "cli_main.cpp"
     "TBP/Bot.cpp"
 )
@@ -33,5 +33,5 @@ add_executable(sdl2_stadium_cli ${UTS_CLI_SOURCES} )
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/TBP)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Util)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Tetris)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Shaktris)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/SDL2)

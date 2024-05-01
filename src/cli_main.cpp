@@ -9,11 +9,10 @@ enum class State {
     GAME_OVER,
 };
 
+int main(int argc, char* argv[]) {
+    // the args should look like this: ./a.out <bot1> <bot2> <pps>
 
-int main(int argc, char**argv) {
-	// the args should look like this: ./a.out <bot1> <bot2> <pps>
-
-	std::span<char*> args(argv, argc);
+    std::span<char*> args(argv, argc);
     // push to vector
 	std::vector<std::string> vargs;
 	for (auto& arg : args) {
@@ -59,8 +58,8 @@ int main(int argc, char**argv) {
     std::array<int, 2> num_wins = { 0, 0 };
     int num_games = 0;
     int num_draws = 0;
-	constexpr int UPS = 100;
-
+    // updates per second
+    constexpr int UPS = 100;
 
     auto restart_bot_game = [](Bot& bot, Game& game) {
         std::vector<PieceType> tbp_queue(Game::queue_size + 1);
@@ -100,6 +99,8 @@ int main(int argc, char**argv) {
 
             game.p2_move.null_move = false;
             game.p2_move.piece = suggestion_2;
+
+            // save everything to a file here
 
             game.play_moves();
 

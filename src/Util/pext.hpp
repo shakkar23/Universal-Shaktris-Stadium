@@ -19,6 +19,7 @@
 // this is not specific to any architecture or integer size
 // but its fine cause we should only be using this on u32s or u64s
 
+// https://www.felixcloutier.com/x86/pext
 template <std::integral T>
 constexpr T pext_impl(const T SRC, const T MASK) {
     T DEST = 0;

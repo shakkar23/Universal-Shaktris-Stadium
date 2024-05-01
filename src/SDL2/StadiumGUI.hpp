@@ -343,12 +343,12 @@ public:
             window.setDrawColor(255, 255, 255, 255);
             window.drawText(player_1.get_name().empty() ? "NONE" : player_1.get_name(), p1_name_area);
 
-            Rect p1_tetris_area = window.getInnerRect(p1_general_area, board_aspect_ratio);
-            p1_tetris_area.y = p1_general_area.y;
-            draw_board_background(window, p1_tetris_area);
-            draw_piece(window, p1_tetris_area, game.p1_game.current_piece);
-            draw_board(window, p1_tetris_area, game.p1_game.board);
-            draw_hold_and_queue(window, game.p1_game, p1_tetris_area);
+            Rect p1_game_area = window.getInnerRect(p1_general_area, board_aspect_ratio);
+            p1_game_area.y = p1_general_area.y;
+            draw_board_background(window, p1_game_area);
+            draw_piece(window, p1_game_area, game.p1_game.current_piece);
+            draw_board(window, p1_game_area, game.p1_game.board);
+            draw_hold_and_queue(window, game.p1_game, p1_game_area);
         }
         {
             // draw player 2
@@ -363,12 +363,12 @@ public:
             window.setDrawColor(255, 255, 255, 255);
             window.drawText(player_2.get_name().empty() ? "NONE" : player_2.get_name(), p2_name_area);
 
-            Rect p2_area = window.getInnerRect(p2_general_area, board_aspect_ratio);
-            p2_area.y = p2_general_area.y;
-            draw_board_background(window, p2_area);
-            draw_piece(window, p2_area, game.p2_game.current_piece);
-            draw_board(window, p2_area, game.p2_game.board);
-            draw_hold_and_queue(window, game.p2_game, p2_area);
+            Rect p2_game_area = window.getInnerRect(p2_general_area, board_aspect_ratio);
+            p2_game_area.y = p2_general_area.y;
+            draw_board_background(window, p2_game_area);
+            draw_piece(window, p2_game_area, game.p2_game.current_piece);
+            draw_board(window, p2_game_area, game.p2_game.board);
+            draw_hold_and_queue(window, game.p2_game, p2_game_area);
         }
 
         window.pop_color();
