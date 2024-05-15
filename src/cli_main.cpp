@@ -48,7 +48,9 @@ int main(int argc, char* argv[]) {
 
     // create the game
     VersusGame game;
-    std::string binary_path = argc > 4 ? vargs[5]: "data.bin";
+    std::string binary_path = argc > 4 ? vargs[5] : "data.bin";
+    std::ofstream file(binary_path, std::ios::binary);
+
     State game_state = State::SETUP;
     // the frame count for the bots to determine when they should move
     int frameCount = 0;
@@ -67,139 +69,141 @@ int main(int argc, char* argv[]) {
         }
         bot.TBP_start(game.board, tbp_queue, game.hold, game.stats.b2b != 0, game.stats.combo);
     };
-    switch (game_state) {
-        case State::PLAYING: {
-            if (game.game_over) {
-                game_state = State::GAME_OVER;
-            }
-
-            // if need to move then ask the bots for moves
-            if (frameCount >= UPS / pps) {
-                player_1.TBP_suggest();
-                Piece suggestion_1 = player_1.TBP_suggestion()[0];
-
-                player_2.TBP_suggest();
-                Piece suggestion_2 = player_2.TBP_suggestion()[0];
-
-                game.p1_move.null_move = false;
-                game.p1_move.piece = suggestion_1;
-
-                bool p1_first_hold = false;
-                if (!game.p1_game.hold && suggestion_1.type != game.p1_game.current_piece.type) {
-                    p1_first_hold = true;
+    while (true) {
+        switch (game_state) {
+            case State::PLAYING: {
+                if (game.game_over) {
+                    game_state = State::GAME_OVER;
                 }
 
-                bool p2_first_hold = false;
-                if (!game.p2_game.hold && suggestion_2.type != game.p2_game.current_piece.type) {
-                    p2_first_hold = true;
-                }
+                // if need to move then ask the bots for moves
+                if (frameCount >= UPS / pps) {
+                    player_1.TBP_suggest();
+                    Piece suggestion_1 = player_1.TBP_suggestion()[0];
 
-                game.p2_move.null_move = false;
-                game.p2_move.piece = suggestion_2;
+                    player_2.TBP_suggest();
+                    Piece suggestion_2 = player_2.TBP_suggestion()[0];
 
-                // save everything to a file here
-                struct data {
-                    data(const Game& game) {
-                        b = game.board;
-                        p_type = (u8)game.current_piece.type;
-                        p_rot = game.current_piece.rotation;
-                        p_x = (u8)game.current_piece.position.x;
-                        p_y = (u8)game.current_piece.position.y;
-                        meter = (u8)game.garbage_meter;
-                        queue[0] = (u8)game.queue[0];
-                        queue[1] = (u8)game.queue[1];
-                        queue[2] = (u8)game.queue[2];
-                        queue[3] = (u8)game.queue[3];
-                        queue[4] = (u8)game.queue[4];
-                        hold = game.hold.has_value() ? (u8)game.hold.value().type : 7;
+                    game.p1_move.null_move = false;
+                    game.p1_move.piece = suggestion_1;
+
+                    bool p1_first_hold = false;
+                    if (!game.p1_game.hold && suggestion_1.type != game.p1_game.current_piece.type) {
+                        p1_first_hold = true;
                     }
-                    // board
-                    Board b;
 
-                    // piece
-                    u8 p_type;
-                    u8 p_rot;
-                    u8 p_x;
-                    u8 p_y;
-
-                    // extra data
-                    u8 meter;
-                    u8 queue[5];
-                    u8 hold;
-                } p1(game.p1_game), p2(game.p2_game);
-
-                game.play_moves();
-
-                // save the data to a file
-                std::ofstream file("data.bin", std::ios::binary);
-                file.write((char*)game.game_over, 1);
-                file.write((char*)&p1, sizeof(data));
-                file.write((char*)&p2, sizeof(data));
-                file.close();
-
-                bool p2_play = false;
-                if (game.p2_accepts_garbage) {
-                    restart_bot_game(player_2, game.p2_game);
-                } else {
-                    if (p2_first_hold) {
-                        player_2.TBP_new_piece(game.p2_game.queue[3]);
+                    bool p2_first_hold = false;
+                    if (!game.p2_game.hold && suggestion_2.type != game.p2_game.current_piece.type) {
+                        p2_first_hold = true;
                     }
-                    player_2.TBP_new_piece(game.p2_game.queue.back());
-                    p2_play = true;
+
+                    game.p2_move.null_move = false;
+                    game.p2_move.piece = suggestion_2;
+
+                    // save everything to a file here
+                    struct data {
+                        data(const Game& game) {
+                            b = game.board;
+                            p_type = (u8)game.current_piece.type;
+                            p_rot = game.current_piece.rotation;
+                            p_x = (u8)game.current_piece.position.x;
+                            p_y = (u8)game.current_piece.position.y;
+                            meter = (u8)game.garbage_meter;
+                            queue[0] = (u8)game.queue[0];
+                            queue[1] = (u8)game.queue[1];
+                            queue[2] = (u8)game.queue[2];
+                            queue[3] = (u8)game.queue[3];
+                            queue[4] = (u8)game.queue[4];
+                            hold = game.hold.has_value() ? (u8)game.hold.value().type : 7;
+                        }
+                        // board
+                        Board b;
+
+                        // piece
+                        u8 p_type;
+                        u8 p_rot;
+                        u8 p_x;
+                        u8 p_y;
+
+                        // extra data
+                        u8 meter;
+                        u8 queue[5];
+                        u8 hold;
+                    } p1(game.p1_game), p2(game.p2_game);
+
+                    game.play_moves();
+
+                    // save the data to a file
+                    file.write((char*)&game.state, sizeof(VersusGame::State));  // 1 byte
+                    file.write((char*)&p1, sizeof(data));                       // 52 bytes
+                    file.write((char*)&p2, sizeof(data));                       // 52 bytes
+                    file.close();
+
+                    bool p2_play = false;
+                    if (game.p2_accepts_garbage) {
+                        restart_bot_game(player_2, game.p2_game);
+                    } else {
+                        if (p2_first_hold) {
+                            player_2.TBP_new_piece(game.p2_game.queue[3]);
+                        }
+                        player_2.TBP_new_piece(game.p2_game.queue.back());
+                        p2_play = true;
+                    }
+
+                    bool p1_play = false;
+                    if (game.p1_accepts_garbage) {
+                        restart_bot_game(player_1, game.p1_game);
+                    } else {
+                        if (p1_first_hold)
+                            player_1.TBP_new_piece(game.p1_game.queue[3]);
+                        player_1.TBP_new_piece(game.p1_game.queue.back());
+
+                        p1_play = true;
+                    }
+
+                    if (p2_play)
+                        player_2.TBP_play(suggestion_2);
+
+                    if (p1_play)
+                        player_1.TBP_play(suggestion_1);
+
+                    frameCount = 0;
                 }
 
-                bool p1_play = false;
-                if (game.p1_accepts_garbage) {
-                    restart_bot_game(player_1, game.p1_game);
-                } else {
-                    if (p1_first_hold)
-                        player_1.TBP_new_piece(game.p1_game.queue[3]);
-                    player_1.TBP_new_piece(game.p1_game.queue.back());
+                frameCount++;
+            } break;
 
-                    p1_play = true;
-                }
+            case State::SETUP: {
+                game = VersusGame();
 
-                if (p2_play)
-                    player_2.TBP_play(suggestion_2);
+                restart_bot_game(player_2, game.p2_game);
 
-                if (p1_play)
-                    player_1.TBP_play(suggestion_1);
-
+                restart_bot_game(player_1, game.p1_game);
                 frameCount = 0;
-            }
 
-            frameCount++;
-        } break;
+                game_state = State::PLAYING;
+            } break;
 
-        case State::SETUP: {
-            game = VersusGame();
+            case State::GAME_OVER: {
+                // save stats about the game here
+                if (game.state == VersusGame::State::P1_WIN)
+                    num_wins[0]++;
+                else if (game.state == VersusGame::State::P2_WIN)
+                    num_wins[1]++;
+                else if (game.state == VersusGame::State::DRAW)
+                    num_draws++;
 
-            restart_bot_game(player_2, game.p2_game);
+                num_games++;
+                // clear console
+                std::cout << "\033[2J\033[1;1H";
+                std::cout << "Player 1 wins: " << num_wins[0] << "\nPlayer 2 wins: " << num_wins[1] << "\nDraws: " << num_draws << "\nTotal games: " << num_games << std::endl;
 
-            restart_bot_game(player_1, game.p1_game);
-            frameCount = 0;
+                game_state = State::SETUP;
+            } break;
 
-            game_state = State::PLAYING;
-        } break;
+        }  // end switch
+    }
 
-        case State::GAME_OVER: {
-            // save stats about the game here
-            if (game.state == VersusGame::State::P1_WIN)
-                num_wins[0]++;
-            else if (game.state == VersusGame::State::P2_WIN)
-                num_wins[1]++;
-            else if (game.state == VersusGame::State::DRAW)
-                num_draws++;
-
-            num_games++;
-            // clear console
-            std::cout << "\033[2J\033[1;1H";
-            std::cout << "Player 1 wins: " << num_wins[0] << "\nPlayer 2 wins: " << num_wins[1] << "\nDraws: " << num_draws << "\nTotal games: " << num_games << std::endl;
-
-            game_state = State::SETUP;
-        } break;
-
-    }  // end switch
-
+    std::cout << "Ended" << std::endl;
     return 0;
 }
