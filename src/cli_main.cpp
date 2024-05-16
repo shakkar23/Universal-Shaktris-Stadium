@@ -28,6 +28,13 @@ int main(int argc, char* argv[]) {
 
     // pieces per second that the bots will play at
     float pps = 0.0f;
+    // updates per second
+    constexpr int UPS = 100;
+    const float dt = 1.0f / UPS;
+    int frameCount = 0;
+    float accumulator = 0.0f;
+    double now = std::chrono::high_resolution_clock::now().time_since_epoch().count() / 1e9;
+
     try {
         pps = std::stof(vargs[3]);
     } catch (const std::exception&) {
@@ -52,14 +59,11 @@ int main(int argc, char* argv[]) {
     std::ofstream file(binary_path, std::ios::binary);
 
     State game_state = State::SETUP;
-    // the frame count for the bots to determine when they should move
-    int frameCount = 0;
+
     // recorded stats
     std::array<int, 2> num_wins = {0, 0};
     int num_games = 0;
     int num_draws = 0;
-    // updates per second
-    constexpr int UPS = 100;
 
     auto restart_bot_game = [](Bot& bot, Game& game) {
         std::vector<PieceType> tbp_queue(Game::queue_size + 1);
@@ -170,7 +174,15 @@ int main(int argc, char* argv[]) {
                     frameCount = 0;
                 }
 
-                frameCount++;
+                // find out if its time to update the framecount
+                double new_now = std::chrono::high_resolution_clock::now().time_since_epoch().count() / 1e9;
+                double frame_time = new_now - now;
+                now = new_now;
+                accumulator += frame_time;
+                while (accumulator >= dt) {
+                    accumulator -= dt;
+                    frameCount++;
+                }
             } break;
 
             case State::SETUP: {
