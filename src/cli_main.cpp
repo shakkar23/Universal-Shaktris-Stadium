@@ -141,7 +141,6 @@ int main(int argc, char* argv[]) {
                     file.write((char*)&game.state, sizeof(VersusGame::State));  // 1 byte
                     file.write((char*)&p1, sizeof(data));                       // 52 bytes
                     file.write((char*)&p2, sizeof(data));                       // 52 bytes
-                    file.close();
 
                     bool p2_play = false;
                     if (game.p2_accepts_garbage) {
