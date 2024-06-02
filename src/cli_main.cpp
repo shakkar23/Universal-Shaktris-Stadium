@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
     // create the game
     VersusGame game;
     std::string binary_path = argc > 4 ? vargs[5] : "data.bin";
-    std::ofstream file(binary_path, std::ios::binary);
+    std::ofstream file(binary_path, std::ios::binary | std::ios_base::app);
     std::vector<u8> file_buffer;
 
     State game_state = State::SETUP;
