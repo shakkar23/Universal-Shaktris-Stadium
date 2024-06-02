@@ -85,6 +85,7 @@ public:
 
             // get the board
             auto json_board = j["board"];
+            // taken from https://github.com/Nightcrab/nana/blob/8f5cbb6e6c559b1418c28749166ac2f6713dfdbf/cpp/tbp.cpp#L90
             auto json_to_board = [](nlohmann::json json) -> Board{
                 Board board;
                 for (int y = 0; y < Board::height; ++y) {
@@ -103,6 +104,7 @@ public:
 
             auto json_queue = j["queue"];
             std::vector<PieceType> queue;
+            // taken from the bot.cpp file
             auto str_to_piecetype = [](std::string type) -> PieceType {
                 if (type == "S")
                     return PieceType::S;
