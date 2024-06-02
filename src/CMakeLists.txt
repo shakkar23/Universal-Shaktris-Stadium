@@ -22,6 +22,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64-v3")
 add_executable(sdl2_stadium ${UTS_SOURCES})
 target_link_libraries(sdl2_stadium PRIVATE ${SDL2_LIBRARIES} SDL2::SDL2main ${TTF_LIBS})
 
+
 set(UTS_CLI_SOURCES
     "Shaktris/Game.cpp"
     "cli_main.cpp"
@@ -29,6 +30,18 @@ set(UTS_CLI_SOURCES
 )
 
 add_executable(sdl2_stadium_cli ${UTS_CLI_SOURCES} )
+
+
+
+set(VISUALIZER_SOURCES
+    "tbp_visualizer.cpp"
+    "Shaktris/Game.cpp"
+    "SDL2/Window.cpp"
+    "SDL2/inputs.cpp"
+    "TBP/Bot.cpp"
+)
+add_executable(tbp_visualizer ${VISUALIZER_SOURCES})
+target_link_libraries(tbp_visualizer PRIVATE ${SDL2_LIBRARIES} SDL2::SDL2main ${TTF_LIBS})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/TBP)

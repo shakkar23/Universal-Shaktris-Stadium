@@ -57,6 +57,7 @@ int main(int argc, char* argv[]) {
     VersusGame game;
     std::string binary_path = argc > 4 ? vargs[5] : "data.bin";
     std::ofstream file(binary_path, std::ios::binary);
+    std::vector<u8> file_buffer;
 
     State game_state = State::SETUP;
 
@@ -73,7 +74,10 @@ int main(int argc, char* argv[]) {
         }
         bot.TBP_start(game.board, tbp_queue, game.hold, game.stats.b2b != 0, game.stats.combo);
     };
-    while (true) {
+    
+    // add boolean for changing the value while debugging
+    bool running = true;
+    while (running) {
         switch (game_state) {
             case State::PLAYING: {
                 if (game.game_over) {
@@ -137,10 +141,11 @@ int main(int argc, char* argv[]) {
 
                     game.play_moves();
 
-                    // save the data to a file
-                    file.write((char*)&game.state, sizeof(VersusGame::State));  // 1 byte
-                    file.write((char*)&p1, sizeof(data));                       // 52 bytes
-                    file.write((char*)&p2, sizeof(data));                       // 52 bytes
+                    // save the data to file buffer
+                    
+                    file_buffer.append_range(std::span((u8*)&game.state, sizeof(VersusGame::State))); // one byte
+                    file_buffer.append_range(std::span((u8*)&p1, sizeof(data))); // 52 bytes
+                    file_buffer.append_range(std::span((u8*)&p2, sizeof(data))); // 52 bytes
 
                     bool p2_play = false;
                     if (game.p2_accepts_garbage) {
@@ -197,6 +202,10 @@ int main(int argc, char* argv[]) {
 
             case State::GAME_OVER: {
                 // save stats about the game here
+                file.write((char*)file_buffer.data(), file_buffer.size());
+                file_buffer.clear();
+                file.flush();
+
                 if (game.state == VersusGame::State::P1_WIN)
                     num_wins[0]++;
                 else if (game.state == VersusGame::State::P2_WIN)
