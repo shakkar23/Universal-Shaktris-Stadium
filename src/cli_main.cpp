@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
     }
 
     // check if the args are correct
-    if (vargs.size() != 4) {
+    if (vargs.size() <= 4) {
         std::cerr << "Usage: " << std::filesystem::path(vargs[0]).filename() << " <bot1> <bot2> <pps> <optional:save_path>" << std::endl;
         return 1;
     }
@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
 
     // create the game
     VersusGame game;
-    std::string binary_path = argc > 4 ? vargs[5] : "data.bin";
+    std::string binary_path = vargs.size() >= 4 ? vargs[4] : "data.bin";
     std::ofstream file(binary_path, std::ios::binary | std::ios_base::app);
     std::vector<u8> file_buffer;
 
@@ -86,11 +86,32 @@ int main(int argc, char* argv[]) {
 
                 // if need to move then ask the bots for moves
                 if (frameCount >= UPS / pps) {
+                    bool no_moves_returned = false;
+                    Piece suggestion_1 = PieceType::Empty;
+                    Piece suggestion_2 = PieceType::Empty;
+
                     player_1.TBP_suggest();
-                    Piece suggestion_1 = player_1.TBP_suggestion()[0];
+                    auto p1_suggestions = player_1.TBP_suggestion();
+
+                    if(p1_suggestions.empty()) {
+                        // this is a band-aid patch 
+                        // the bot may have different death rules than what we have in our implementation which causes no moves to be returned
+                        game_state = State::SETUP;
+                        break;
+					}
+
+                    suggestion_1 = p1_suggestions.back();
+					
 
                     player_2.TBP_suggest();
-                    Piece suggestion_2 = player_2.TBP_suggestion()[0];
+                    auto p2_suggestions = player_2.TBP_suggestion();
+                    if(p2_suggestions.empty()) {
+                        game_state = State::SETUP;
+                        break;
+					}
+
+                    suggestion_2 = p2_suggestions.back();
+
 
                     game.p1_move.null_move = false;
                     game.p1_move.piece = suggestion_1;
