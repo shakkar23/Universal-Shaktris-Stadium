@@ -8,12 +8,18 @@ else()
 	set(TTF_LIBS SDL2_ttf::SDL2_ttf)
 endif()
 
-set(UTS_SOURCES
-    "main.cpp"
+set(COMMON_SOURCES
     "Shaktris/Game.cpp"
     "SDL2/Window.cpp"
     "SDL2/inputs.cpp"
     "TBP/Bot.cpp"
+)
+
+
+
+set(UTS_SOURCES
+    "main.cpp"
+    ${COMMON_SOURCES}
 )
 
 
@@ -35,13 +41,17 @@ add_executable(sdl2_stadium_cli ${UTS_CLI_SOURCES} )
 
 set(VISUALIZER_SOURCES
     "tbp_visualizer.cpp"
-    "Shaktris/Game.cpp"
-    "SDL2/Window.cpp"
-    "SDL2/inputs.cpp"
-    "TBP/Bot.cpp"
+    ${COMMON_SOURCES}
 )
 add_executable(tbp_visualizer ${VISUALIZER_SOURCES})
 target_link_libraries(tbp_visualizer PRIVATE ${SDL2_LIBRARIES} SDL2::SDL2main ${TTF_LIBS})
+
+set(DATASET_VIS_SOURCES
+    "dataset_visualizer.cpp"
+)
+
+add_executable(dataset_visualizer ${DATASET_VIS_SOURCES})
+target_link_libraries(dataset_visualizer PRIVATE ${SDL2_LIBRARIES} SDL2::SDL2main ${TTF_LIBS})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/TBP)
