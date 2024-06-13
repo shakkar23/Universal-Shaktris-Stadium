@@ -1,8 +1,8 @@
 #include <iostream>
 #include <unordered_map>
 
+#include "DataVisualizerGUI.hpp"
 #include "SDL2/SDL.h"
-#include "VisualizerGUI.hpp"
 #include "VersusGame.hpp"
 #include "Window.hpp"
 #include "inputs.hpp"
@@ -18,9 +18,9 @@ int main(int argc, char* argv[]) {
             TTF_Quit();
         }
     } sdl_quit;
-    Window window("Visualizer", 400, 600);
+    Window window("Visualizer", 600,400);
 
-    VisualizerGUI game;
+    DataVisualizerGUI game;
 
     Shakkar::inputs input;
 

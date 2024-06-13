@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
     }
 
     // check if the args are correct
-    if (vargs.size() <= 4) {
+    if (vargs.size() < 4) {
         std::cerr << "Usage: " << std::filesystem::path(vargs[0]).filename() << " <bot1> <bot2> <pps> <optional:save_path>" << std::endl;
         return 1;
     }
@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
 
     // create the game
     VersusGame game;
-    std::string binary_path = vargs.size() >= 4 ? vargs[4] : "data.bin";
+    std::string binary_path = vargs.size() > 4 ? vargs[4] : "data.bin";
     std::ofstream file(binary_path, std::ios::binary | std::ios_base::app);
     std::vector<u8> file_buffer;
 
@@ -163,10 +163,16 @@ int main(int argc, char* argv[]) {
                     game.play_moves();
 
                     // save the data to file buffer
-                    
+
+                    /*
                     file_buffer.append_range(std::span((u8*)&game.state, sizeof(VersusGame::State))); // one byte
                     file_buffer.append_range(std::span((u8*)&p1, sizeof(data))); // 52 bytes
                     file_buffer.append_range(std::span((u8*)&p2, sizeof(data))); // 52 bytes
+                    */
+                    // give me an alternative to append_range
+                    file_buffer.insert(file_buffer.end(), (u8*)&game.state, (u8*)&game.state + sizeof(VersusGame::State));
+                    file_buffer.insert(file_buffer.end(), (u8*)&p1, (u8*)&p1 + sizeof(data));
+                    file_buffer.insert(file_buffer.end(), (u8*)&p2, (u8*)&p2 + sizeof(data));
 
                     bool p2_play = false;
                     if (game.p2_accepts_garbage) {

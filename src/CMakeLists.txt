@@ -48,6 +48,7 @@ target_link_libraries(tbp_visualizer PRIVATE ${SDL2_LIBRARIES} SDL2::SDL2main ${
 
 set(DATASET_VIS_SOURCES
     "dataset_visualizer.cpp"
+    ${COMMON_SOURCES}
 )
 
 add_executable(dataset_visualizer ${DATASET_VIS_SOURCES})
