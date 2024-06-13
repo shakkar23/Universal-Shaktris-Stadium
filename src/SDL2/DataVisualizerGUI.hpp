@@ -39,7 +39,7 @@ class DataVisualizerGUI {
    private:
     VersusGame game;
     std::fstream file;
-    size_t file_size;
+    size_t file_size{};
     int windowWidth{}, windowHeight{};
     bool file_loaded = false;
 
@@ -77,15 +77,30 @@ class DataVisualizerGUI {
     void parse_data(bool prev) {
         if (prev) {
             // find the current position of the file cursor and move it back (1+52*2)*2 bytes and clamp the number from [0, file_size]
-            auto pos = file.tellg();
-            file.seekg((1 + 52 * 2) * -2, std::ios::cur);
-            file.seekg(std::max(0, (int)file.tellg()), std::ios::beg);
+            int pos = file.tellg();
+            int result = pos - (sizeof(VersusGame::State) + sizeof(data) * 2) * 2;
+            if (result >= 0) {
+                file.seekg((sizeof(VersusGame::State) + sizeof(data) * 2) * -2, std::ios::cur);
+            } else {
+                return;
+            }
+        }else {
+
+            int pos = file.tellg();
+            int result = pos + (sizeof(VersusGame::State) + sizeof(data) * 2) * 2;
+            if (result <= file_size) {
+                // the file is going to be read in the code below, no need to do anything
+            } else {
+                return;
+            }
         }
         // read the data from the file, reading one byte and then the data struct twice for each player
 
         // read the state
         VersusGame::State state;
         file.read((char*)&state, sizeof(VersusGame::State));
+
+        std::cout << "State: " << (int)state << std::endl;
 
         // read the data for player 1
         data p1;
