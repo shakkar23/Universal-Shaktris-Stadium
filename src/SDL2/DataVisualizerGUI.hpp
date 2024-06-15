@@ -13,6 +13,7 @@
 #include "VersusGame.hpp"
 #include "Window.hpp"
 #include "inputs.hpp"
+#include "../Dataset/GameState.hpp"
 
 using Rect = SDL_Rect;
 
@@ -43,51 +44,20 @@ class DataVisualizerGUI {
     int windowWidth{}, windowHeight{};
     bool file_loaded = false;
 
-    struct data {
-        data(const Game& game) {
-            b = game.board;
-            p_type = (u8)game.current_piece.type;
-            p_rot = game.current_piece.rotation;
-            p_x = (u8)game.current_piece.position.x;
-            p_y = (u8)game.current_piece.position.y;
-            meter = (u8)game.garbage_meter;
-            queue[0] = (u8)game.queue[0];
-            queue[1] = (u8)game.queue[1];
-            queue[2] = (u8)game.queue[2];
-            queue[3] = (u8)game.queue[3];
-            queue[4] = (u8)game.queue[4];
-            hold = game.hold.has_value() ? (u8)game.hold.value().type : 7;
-        }
-        data() = default;
-        // board
-        Board b;
-
-        // piece
-        u8 p_type;
-        u8 p_rot;
-        u8 p_x;
-        u8 p_y;
-
-        // extra data
-        u8 meter;
-        u8 queue[5];
-        u8 hold;
-    };
-
     void parse_data(bool prev) {
         if (prev) {
             // find the current position of the file cursor and move it back (1+52*2)*2 bytes and clamp the number from [0, file_size]
             int pos = file.tellg();
-            int result = pos - (sizeof(VersusGame::State) + sizeof(data) * 2) * 2;
+            int result = pos - (sizeof(VersusGame::State) + sizeof(game_state_datum) * 2) * 2;
             if (result >= 0) {
-                file.seekg((sizeof(VersusGame::State) + sizeof(data) * 2) * -2, std::ios::cur);
+                file.seekg((sizeof(VersusGame::State) + sizeof(game_state_datum) * 2) * -2, std::ios::cur);
             } else {
                 return;
             }
         }else {
 
             int pos = file.tellg();
-            int result = pos + (sizeof(VersusGame::State) + sizeof(data) * 2) * 2;
+            int result = pos + (sizeof(VersusGame::State) + sizeof(game_state_datum) * 2) * 2;
             if (result <= file_size) {
                 // the file is going to be read in the code below, no need to do anything
             } else {
@@ -103,28 +73,40 @@ class DataVisualizerGUI {
         std::cout << "State: " << (int)state << std::endl;
 
         // read the data for player 1
-        data p1;
-        file.read((char*)&p1, sizeof(data));
+        game_state_datum p1;
+        file.read((char*)&p1, sizeof(game_state_datum));
 
         // read the data for player 2
-        data p2;
-        file.read((char*)&p2, sizeof(data));
+        game_state_datum p2;
+        file.read((char*)&p2, sizeof(game_state_datum));
 
         // set the game state
         game.state = state;
 
-        // set the game data
+        // set the game 
         game.p1_game.board = p1.b;
-        game.p1_game.current_piece = Piece((PieceType)p1.p_type, Coord(p1.p_x, p1.p_y), (RotationDirection)p1.p_rot, spinType::null);
+
+        game.p1_game.current_piece = Piece((PieceType)p1.m_type, Coord(p1.m_x, p1.m_y), (RotationDirection)p1.m_rot, spinType::null);
+
         game.p1_game.garbage_meter = p1.meter;
+
         game.p1_game.queue = {(PieceType)p1.queue[0], (PieceType)p1.queue[1], (PieceType)p1.queue[2], (PieceType)p1.queue[3], (PieceType)p1.queue[4]};
+
         game.p1_game.hold = p1.hold == 7 ? std::nullopt : std::optional(Piece((PieceType)p1.hold));
 
+
+
+
         game.p2_game.board = p2.b;
-        game.p2_game.current_piece = Piece((PieceType)p2.p_type, Coord(p2.p_x, p2.p_y), (RotationDirection)p2.p_rot, spinType::null);
+
+        game.p2_game.current_piece = Piece((PieceType)p2.m_type, Coord(p2.m_x, p2.m_y), (RotationDirection)p2.m_rot, spinType::null);
+
         game.p2_game.garbage_meter = p2.meter;
+
         game.p2_game.queue = {(PieceType)p2.queue[0], (PieceType)p2.queue[1], (PieceType)p2.queue[2], (PieceType)p2.queue[3], (PieceType)p2.queue[4]};
+
         game.p2_game.hold = p2.hold == 7 ? std::nullopt : std::optional(Piece((PieceType)p2.hold));
+
     }
 
    public:
@@ -254,19 +236,23 @@ class DataVisualizerGUI {
 
     void draw_piece(Window& window, Rect area, Piece piece) {
         FPoint cell_size = {area.w / 14.0f, area.h / 20.0f};
+
         Rect board = {
-            int(area.x + 2.0f * cell_size.x),
+            int(area.x + 2 * cell_size.x),
             int(area.y),
             int(10.0f * cell_size.x),
-            int(20.0f * cell_size.y)};
+            int(20.0f * cell_size.y) };
+
+        // bottom left point of the board
         Point board_point = {board.x, board.y + board.h};
+
         Color col = get_color(piece.type);
         window.setDrawColor(col.r, col.g, col.b, col.a);
 
         for (auto& mino : piece.minos) {
             Rect cell = {
                 int(ceil(board_point.x + (piece.position.x + mino.x) * cell_size.x)),
-                int(ceil(board_point.y - (piece.position.y + mino.y) * cell_size.y)),
+                int(ceil(board_point.y - (piece.position.y + mino.y) * cell_size.y - cell_size.y)),
                 (int)ceil(cell_size.x), (int)ceil(cell_size.y)};
 
             window.drawRectFilled(cell);

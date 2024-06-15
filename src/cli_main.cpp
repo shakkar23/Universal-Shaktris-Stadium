@@ -3,6 +3,7 @@
 
 #include "Bot.hpp"
 #include "VersusGame.hpp"
+#include "Dataset/GameState.hpp"
 
 enum class State {
     PLAYING,
@@ -130,35 +131,33 @@ int main(int argc, char* argv[]) {
                     game.p2_move.piece = suggestion_2;
 
                     // save everything to a file here
-                    struct data {
-                        data(const Game& game) {
-                            b = game.board;
-                            p_type = (u8)game.current_piece.type;
-                            p_rot = game.current_piece.rotation;
-                            p_x = (u8)game.current_piece.position.x;
-                            p_y = (u8)game.current_piece.position.y;
-                            meter = (u8)game.garbage_meter;
-                            queue[0] = (u8)game.queue[0];
-                            queue[1] = (u8)game.queue[1];
-                            queue[2] = (u8)game.queue[2];
-                            queue[3] = (u8)game.queue[3];
-                            queue[4] = (u8)game.queue[4];
-                            hold = game.hold.has_value() ? (u8)game.hold.value().type : 7;
-                        }
-                        // board
-                        Board b;
+                    
 
-                        // piece
-                        u8 p_type;
-                        u8 p_rot;
-                        u8 p_x;
-                        u8 p_y;
+                    auto make_data = [](const Game& game, const Move& move) {
+                        game_state_datum d;
+                        d.b = game.board;
 
-                        // extra data
-                        u8 meter;
-                        u8 queue[5];
-                        u8 hold;
-                    } p1(game.p1_game), p2(game.p2_game);
+                        d.p_type = (u8)game.current_piece.type;
+
+                        d.m_type = (u8)move.piece.type;
+                        d.m_rot = move.piece.rotation;
+                        d.m_x = (u8)move.piece.position.x;
+                        d.m_y = (u8)move.piece.position.y;
+
+                        d.meter = (u8)game.garbage_meter;
+
+                        d.queue[0] = (u8)game.queue[0];
+                        d.queue[1] = (u8)game.queue[1];
+                        d.queue[2] = (u8)game.queue[2];
+                        d.queue[3] = (u8)game.queue[3];
+                        d.queue[4] = (u8)game.queue[4];
+
+                        d.hold = game.hold.has_value() ? (u8)game.hold.value().type : 7;
+                        return d;
+                        };
+
+                    game_state_datum p1(make_data(game.p1_game, game.p1_move));
+                    game_state_datum p2(make_data(game.p2_game, game.p2_move));
 
                     game.play_moves();
 
@@ -171,8 +170,8 @@ int main(int argc, char* argv[]) {
                     */
                     // give me an alternative to append_range
                     file_buffer.insert(file_buffer.end(), (u8*)&game.state, (u8*)&game.state + sizeof(VersusGame::State));
-                    file_buffer.insert(file_buffer.end(), (u8*)&p1, (u8*)&p1 + sizeof(data));
-                    file_buffer.insert(file_buffer.end(), (u8*)&p2, (u8*)&p2 + sizeof(data));
+                    file_buffer.insert(file_buffer.end(), (u8*)&p1, (u8*)&p1 + sizeof(game_state_datum));
+                    file_buffer.insert(file_buffer.end(), (u8*)&p2, (u8*)&p2 + sizeof(game_state_datum));
 
                     bool p2_play = false;
                     if (game.p2_accepts_garbage) {
