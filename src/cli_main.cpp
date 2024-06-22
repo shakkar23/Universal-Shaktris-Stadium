@@ -5,6 +5,14 @@
 #include "VersusGame.hpp"
 #include "Dataset/GameState.hpp"
 
+
+
+
+void push_state(std::vector<uint8_t>& file_buffer, VersusGame::State& game, game_state_datum& p1, game_state_datum& p2);
+
+game_state_datum make_data(const Game& game, const Move& move);
+
+
 enum class State {
     PLAYING,
     SETUP,
@@ -83,6 +91,14 @@ int main(int argc, char* argv[]) {
             case State::PLAYING: {
                 if (game.game_over) {
                     game_state = State::GAME_OVER;
+
+                    Move empty_move;
+                    game_state_datum p1(make_data(game.p1_game, empty_move));
+                    game_state_datum p2(make_data(game.p2_game, empty_move));
+
+                    push_state(file_buffer, game.state, p1, p2);
+
+                    break;
                 }
 
                 // if need to move then ask the bots for moves
@@ -94,22 +110,22 @@ int main(int argc, char* argv[]) {
                     player_1.TBP_suggest();
                     auto p1_suggestions = player_1.TBP_suggestion();
 
-                    if(p1_suggestions.empty()) {
+                    if (p1_suggestions.empty()) {
                         // this is a band-aid patch 
                         // the bot may have different death rules than what we have in our implementation which causes no moves to be returned
                         game_state = State::SETUP;
                         break;
-					}
+                    }
 
                     suggestion_1 = p1_suggestions.back();
-					
+
 
                     player_2.TBP_suggest();
                     auto p2_suggestions = player_2.TBP_suggestion();
-                    if(p2_suggestions.empty()) {
+                    if (p2_suggestions.empty()) {
                         game_state = State::SETUP;
                         break;
-					}
+                    }
 
                     suggestion_2 = p2_suggestions.back();
 
@@ -130,31 +146,6 @@ int main(int argc, char* argv[]) {
                     game.p2_move.null_move = false;
                     game.p2_move.piece = suggestion_2;
 
-                    // save everything to a file here
-                    
-
-                    auto make_data = [](const Game& game, const Move& move) {
-                        game_state_datum d;
-                        d.b = game.board;
-
-                        d.p_type = (u8)game.current_piece.type;
-
-                        d.m_type = (u8)move.piece.type;
-                        d.m_rot = move.piece.rotation;
-                        d.m_x = (u8)move.piece.position.x;
-                        d.m_y = (u8)move.piece.position.y;
-
-                        d.meter = (u8)game.garbage_meter;
-
-                        d.queue[0] = (u8)game.queue[0];
-                        d.queue[1] = (u8)game.queue[1];
-                        d.queue[2] = (u8)game.queue[2];
-                        d.queue[3] = (u8)game.queue[3];
-                        d.queue[4] = (u8)game.queue[4];
-
-                        d.hold = game.hold.has_value() ? (u8)game.hold.value().type : 7;
-                        return d;
-                        };
 
                     game_state_datum p1(make_data(game.p1_game, game.p1_move));
                     game_state_datum p2(make_data(game.p2_game, game.p2_move));
@@ -162,16 +153,8 @@ int main(int argc, char* argv[]) {
                     game.play_moves();
 
                     // save the data to file buffer
-
-                    /*
-                    file_buffer.append_range(std::span((u8*)&game.state, sizeof(VersusGame::State))); // one byte
-                    file_buffer.append_range(std::span((u8*)&p1, sizeof(data))); // 52 bytes
-                    file_buffer.append_range(std::span((u8*)&p2, sizeof(data))); // 52 bytes
-                    */
-                    // give me an alternative to append_range
-                    file_buffer.insert(file_buffer.end(), (u8*)&game.state, (u8*)&game.state + sizeof(VersusGame::State));
-                    file_buffer.insert(file_buffer.end(), (u8*)&p1, (u8*)&p1 + sizeof(game_state_datum));
-                    file_buffer.insert(file_buffer.end(), (u8*)&p2, (u8*)&p2 + sizeof(game_state_datum));
+                    auto s = VersusGame::State::PLAYING;
+                    push_state(file_buffer, s, p1, p2);
 
                     bool p2_play = false;
                     if (game.p2_accepts_garbage) {
@@ -252,4 +235,42 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Ended" << std::endl;
     return 0;
+}
+
+game_state_datum make_data(const Game& game, const Move& move)
+{
+    game_state_datum d;
+    d.b = game.board;
+
+    d.p_type = (u8)game.current_piece.type;
+
+    d.m_type = (u8)move.piece.type;
+    d.m_rot = move.piece.rotation;
+    d.m_x = (u8)move.piece.position.x;
+    d.m_y = (u8)move.piece.position.y;
+
+    d.meter = (u8)game.garbage_meter;
+
+    d.queue[0] = (u8)game.queue[0];
+    d.queue[1] = (u8)game.queue[1];
+    d.queue[2] = (u8)game.queue[2];
+    d.queue[3] = (u8)game.queue[3];
+    d.queue[4] = (u8)game.queue[4];
+
+    d.hold = game.hold.has_value() ? (u8)game.hold.value().type : 7;
+    return d;
+}
+
+void push_state(std::vector<uint8_t>& file_buffer, VersusGame::State& state, game_state_datum& p1, game_state_datum& p2)
+{
+
+    /*
+    file_buffer.append_range(std::span((u8*)&game.state, sizeof(VersusGame::State))); // one byte
+    file_buffer.append_range(std::span((u8*)&p1, sizeof(data))); // 52 bytes
+    file_buffer.append_range(std::span((u8*)&p2, sizeof(data))); // 52 bytes
+    */
+    // give me an alternative to append_range
+    file_buffer.insert(file_buffer.end(), (u8*)&state, (u8*)&state + sizeof(VersusGame::State));
+    file_buffer.insert(file_buffer.end(), (u8*)&p1, (u8*)&p1 + sizeof(game_state_datum));
+    file_buffer.insert(file_buffer.end(), (u8*)&p2, (u8*)&p2 + sizeof(game_state_datum));
 }
