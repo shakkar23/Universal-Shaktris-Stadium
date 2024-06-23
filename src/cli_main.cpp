@@ -29,7 +29,10 @@ int main(int argc, char* argv[]) {
         vargs.push_back(arg);
     }
 
-  // check if the args are correct
+#include "cli_main.hpp"
+
+
+    // check if the args are correct
     if (vargs.size() < 4) {
         std::cerr << "Usage: " << std::filesystem::path(vargs[0]).filename() << " <bot1> <bot2> <pps> <optional:save_path>" << std::endl;
         return 1;
