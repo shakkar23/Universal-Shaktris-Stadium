@@ -14,4 +14,4 @@ out
 enc_temp_folder
 build
 .vscode
-/src/cli_main.hpp
+src/cli_main.hpp
