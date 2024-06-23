@@ -36,11 +36,17 @@ class VersusGame {
     RNG p1_rng;
     RNG p2_rng;
 
+    int p1_damage_sent = 0;
+    int p2_damage_sent = 0;
+
     double p1_atk = 0;
     double p2_atk = 0;
 
     int p1_meter = 0;
     int p2_meter = 0;
+
+    bool p1_spun = false;
+    bool p2_spun = false;
 
     bool p1_accepts_garbage = false;
     bool p2_accepts_garbage = false;
@@ -106,9 +112,11 @@ class VersusGame {
                 }
             }
 
-            if (spin == spinType::normal && p1_cleared_lines > 0) {
-                // std::cout << "p1 did T-spin " << p1_cleared_lines << std::endl;
+            if (spin == spinType::normal || spin == spinType::mini && p1_cleared_lines > 0) {
+                p1_spun = true;
             }
+            else
+                p1_spun = false;
 
             if (pc) {
                 // std::cout << "p1 did perfect clear" << std::endl;
@@ -116,10 +124,13 @@ class VersusGame {
 
             int dmg = p1_game.damage_sent(p1_cleared_lines, spin, pc);
 
+            p1_damage_sent = dmg;
+
             p1_atk += dmg;
 
             p2_meter += dmg;
-        }
+        } else 
+            p1_spun = false;
 
         int p2_cleared_lines = 0;
         bool p2_first_hold = false;
@@ -138,9 +149,10 @@ class VersusGame {
                 }
             }
 
-            if (spin == spinType::normal && p2_cleared_lines > 0) {
-                // std::cout << "p2 did T-spin " << p2_cleared_lines << std::endl;
-            }
+            if (spin == spinType::normal || spin == spinType::mini && p2_cleared_lines > 0) {
+                p2_spun = true;
+            } else 
+                p2_spun = false;
 
             if (pc) {
                 // std::cout << "p2 did perfect clear" << std::endl;
@@ -148,10 +160,13 @@ class VersusGame {
 
             int dmg = p2_game.damage_sent(p2_cleared_lines, spin, pc);
 
+            p2_damage_sent = dmg;
+
             p2_atk += dmg;
 
             p1_meter += dmg;
-        }
+        } else 
+			p2_spun = false;
 
         int min_meter = std::min(p1_meter, p2_meter);
 

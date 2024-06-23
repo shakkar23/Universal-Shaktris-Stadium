@@ -20,6 +20,9 @@ struct game_state_datum {
 
     // extra data
     u8 meter;
+    u8 attack;
+    u8 damage_received;
+    u8 spun;
     u8 queue[5];
     u8 hold;
 };

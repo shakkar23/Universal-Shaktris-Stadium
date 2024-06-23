@@ -10,7 +10,7 @@
 
 void push_state(std::vector<uint8_t>& file_buffer, VersusGame::State& game, game_state_datum& p1, game_state_datum& p2);
 
-game_state_datum make_data(const Game& game, const Move& move);
+game_state_datum make_data(const Game& game, const Move& move, int& damage_sent);
 
 
 enum class State {
@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
         vargs.push_back(arg);
     }
 
-    // check if the args are correct
+  // check if the args are correct
     if (vargs.size() < 4) {
         std::cerr << "Usage: " << std::filesystem::path(vargs[0]).filename() << " <bot1> <bot2> <pps> <optional:save_path>" << std::endl;
         return 1;
@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
     // pieces per second that the bots will play at
     float pps = 0.0f;
     // updates per second
-    constexpr int UPS = 100;
+    constexpr int UPS = 1000;
     const float dt = 1.0f / UPS;
     int frameCount = 0;
     float accumulator = 0.0f;
@@ -93,8 +93,9 @@ int main(int argc, char* argv[]) {
                     game_state = State::GAME_OVER;
 
                     Move empty_move;
-                    game_state_datum p1(make_data(game.p1_game, empty_move));
-                    game_state_datum p2(make_data(game.p2_game, empty_move));
+                    int empty_attack = 0;
+                    game_state_datum p1(make_data(game.p1_game, empty_move, empty_attack));
+                    game_state_datum p2(make_data(game.p2_game, empty_move, empty_attack));
 
                     push_state(file_buffer, game.state, p1, p2);
 
@@ -147,13 +148,21 @@ int main(int argc, char* argv[]) {
                     game.p2_move.piece = suggestion_2;
 
 
-                    game_state_datum p1(make_data(game.p1_game, game.p1_move));
-                    game_state_datum p2(make_data(game.p2_game, game.p2_move));
+                    game_state_datum p1(make_data(game.p1_game, game.p1_move, game.p1_damage_sent));
+                    game_state_datum p2(make_data(game.p2_game, game.p2_move, game.p2_damage_sent));
+                    VersusGame::State s = VersusGame::State::PLAYING;
 
                     game.play_moves();
 
+                    p1.attack = game.p1_damage_sent;
+                    p1.damage_received = game.p2_damage_sent;
+                    p1.spun = game.p1_spun;
+
+                    p2.attack = game.p2_damage_sent;
+                    p2.damage_received = game.p1_damage_sent;
+                    p2.spun = game.p2_spun;
+
                     // save the data to file buffer
-                    auto s = VersusGame::State::PLAYING;
                     push_state(file_buffer, s, p1, p2);
 
                     bool p2_play = false;
@@ -237,9 +246,9 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-game_state_datum make_data(const Game& game, const Move& move)
+game_state_datum make_data(const Game& game, const Move& move, int& damage_sent)
 {
-    game_state_datum d;
+    game_state_datum d{};
     d.b = game.board;
 
     d.p_type = (u8)game.current_piece.type;
