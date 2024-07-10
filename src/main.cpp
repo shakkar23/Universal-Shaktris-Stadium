@@ -7,7 +7,7 @@
 #include "Window.hpp"
 #include "inputs.hpp"
 
-void ProcessInputs(SDL_Event& event, bool& shouldDisplay, bool& windowSizedChanged, Shakkar::inputs& input, bool& gameRunning);
+void ProcessInputs(SDL_Event& event, bool& shouldDisplay, Shakkar::inputs& input, bool& gameRunning);
 
 int main(int argc, char* argv[]) {
     SDL_Init(SDL_INIT_EVERYTHING);
@@ -29,14 +29,13 @@ int main(int argc, char* argv[]) {
 
     // rendering constantly, and not actually displaying causes memory to stack higher and higher until the frames can be shown
     bool shouldDisplay = false;
-    bool windowSizedChanged = false;
 
     float alpha = 0.0;
     Uint64 last_time = SDL_GetPerformanceCounter();
     Uint64 ticks = 0;
 
     while (gameRunning) {
-        ProcessInputs(event, shouldDisplay, windowSizedChanged, input, gameRunning);
+        ProcessInputs(event, shouldDisplay, input, gameRunning);
 
         // skip frames that cant be shown due to window not currently accepting frames to display
         if (!shouldDisplay) {
@@ -55,8 +54,6 @@ int main(int argc, char* argv[]) {
             }
             if (gameRunning) {
                 game.render(window);
-            } else {
-                gameRunning = false;
             }
         }
     }
@@ -64,7 +61,7 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-void ProcessInputs(SDL_Event& event, bool& shouldDisplay, bool& windowSizedChanged, Shakkar::inputs& input, bool& gameRunning) {
+void ProcessInputs(SDL_Event& event, bool& shouldDisplay, Shakkar::inputs& input, bool& gameRunning) {
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
             case SDL_WINDOWEVENT: {
@@ -76,7 +73,7 @@ void ProcessInputs(SDL_Event& event, bool& shouldDisplay, bool& windowSizedChang
                         shouldDisplay = false;
                         break;
                     case SDL_WINDOWEVENT_SIZE_CHANGED:
-                        windowSizedChanged = true;
+                        //windowSizedChanged = true;
                         break;
                     default:
                         break;

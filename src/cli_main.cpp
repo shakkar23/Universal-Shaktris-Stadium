@@ -41,8 +41,8 @@ int main(int argc, char* argv[]) {
     // pieces per second that the bots will play at
     float pps = 0.0f;
     // updates per second
-    constexpr int UPS = 1000;
-    const float dt = 1.0f / UPS;
+    constexpr int UPS = 100;
+    constexpr float dt = 1.0f / UPS;
     int frameCount = 0;
     float accumulator = 0.0f;
     double now = std::chrono::high_resolution_clock::now().time_since_epoch().count() / 1e9;

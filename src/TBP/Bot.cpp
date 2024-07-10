@@ -95,6 +95,12 @@ void Bot::start(const char* path) {
     author = info["author"].get<std::string>();
     name = info["name"].get<std::string>();
     version = info["version"].get<std::string>();
+    nlohmann::json rules;
+    rules["type"] = "rules";
+    send(rules.dump());
+    auto ready = receive();
+    std::cout << "TBP ready: " << ready << std::endl
+		<< std::endl;
 
     running = true;
 }
@@ -276,9 +282,8 @@ std::vector<Piece> Bot::TBP_suggestion() {
     std::cout << "TBP suggestion: ";
     // example: {"moves":[{"location":{"orientation":"north","type":"L","x":8,"y":0},"spin":"none"}],"type":"suggestion"}
     std::string suggestion_str = receive();
+    std::cout << suggestion_str << std::endl << std::endl;
     suggestion = nlohmann::json::parse(suggestion_str);
-    std::cout << suggestion << std::endl
-        << std::endl;
     std::vector<Piece> moves;
     for (const auto& move : suggestion["moves"]) {
         PieceType type;

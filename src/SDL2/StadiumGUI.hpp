@@ -142,9 +142,9 @@ public:
         case GameState::SETUP: {
             game = VersusGame();
 
-            restart_bot_game(player_2, game.p2_game);
-
             restart_bot_game(player_1, game.p1_game);
+
+            restart_bot_game(player_2, game.p2_game);
             frameCount = 0;
 
             game_state = GameState::PLAYING;
