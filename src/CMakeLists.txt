@@ -18,7 +18,7 @@ set(COMMON_SOURCES
 
 
 set(UTS_SOURCES
-    "main.cpp"
+    "stadium_gui.cpp"
     ${COMMON_SOURCES}
 )
 
@@ -26,12 +26,12 @@ set(UTS_SOURCES
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64-v3")
 
 add_executable(sdl2_stadium ${UTS_SOURCES})
-target_link_libraries(sdl2_stadium PRIVATE ${SDL2_LIBRARIES} SDL2::SDL2main ${TTF_LIBS})
+target_link_libraries(sdl2_stadium PRIVATE SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf)
 
 
 set(UTS_CLI_SOURCES
     "Shaktris/Game.cpp"
-    "cli_main.cpp"
+    "stadium_cli.cpp"
     "TBP/Bot.cpp"
 )
 
@@ -44,7 +44,7 @@ set(VISUALIZER_SOURCES
     ${COMMON_SOURCES}
 )
 add_executable(tbp_visualizer ${VISUALIZER_SOURCES})
-target_link_libraries(tbp_visualizer PRIVATE ${SDL2_LIBRARIES} SDL2::SDL2main ${TTF_LIBS})
+target_link_libraries(tbp_visualizer PRIVATE SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf)
 
 set(DATASET_VIS_SOURCES
     "dataset_visualizer.cpp"
@@ -52,7 +52,7 @@ set(DATASET_VIS_SOURCES
 )
 
 add_executable(dataset_visualizer ${DATASET_VIS_SOURCES})
-target_link_libraries(dataset_visualizer PRIVATE ${SDL2_LIBRARIES} SDL2::SDL2main ${TTF_LIBS})
+target_link_libraries(dataset_visualizer PRIVATE SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/TBP)
