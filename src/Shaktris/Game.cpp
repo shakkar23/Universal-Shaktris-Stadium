@@ -5,8 +5,8 @@
 #include <iostream>
 #include <map>
 #include <random>
-#include <tuple>
 #include <ranges>
+#include <tuple>
 
 void Game::place_piece() {
     board.set(current_piece);
@@ -129,7 +129,7 @@ void Game::shift(Piece& piece, int dir) const {
         piece.spin = spinType::null;
 }
 
-void Game::sonic_drop(const Board board, Piece& piece) const {
+void Game::sonic_drop(const Board& board, Piece& piece) const {
     int distance = 32;
     for (auto& mino : piece.minos) {
 

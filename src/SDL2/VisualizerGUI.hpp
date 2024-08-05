@@ -22,8 +22,9 @@ using Color = SDL_Color;
 constexpr float board_aspect_ratio = 14. / 20.;
 
 class VisualizerGUI {
-private:
+public:
     Game game;
+private:
     int windowWidth{}, windowHeight{};
 
 public:
@@ -237,7 +238,7 @@ private:
         }
     }
 
-    void draw_piece(Window& window, Rect area, Piece piece) {
+    inline void draw_piece(Window& window, Rect area, Piece piece) {
         FPoint cell_size = { area.w / 14.0f, area.h / 20.0f };
         Rect board = {
             int(area.x + 2.0f * cell_size.x),
@@ -258,7 +259,7 @@ private:
         }
     }
 
-    void draw_hold_and_queue(Window& window, Game& player, Rect& area) {
+    inline void draw_hold_and_queue(Window& window, Game& player, Rect& area) {
         {
             FPoint cell_size = { area.w / 14.0f, area.h / 20.0f };
             Rect hold = {

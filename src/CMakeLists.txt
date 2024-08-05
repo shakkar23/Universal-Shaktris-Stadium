@@ -8,6 +8,9 @@ else()
 	set(TTF_LIBS SDL2_ttf::SDL2_ttf)
 endif()
 
+find_package(ixwebsocket CONFIG REQUIRED)
+
+
 set(COMMON_SOURCES
     "Shaktris/Game.cpp"
     "SDL2/Window.cpp"
@@ -53,6 +56,16 @@ set(DATASET_VIS_SOURCES
 
 add_executable(dataset_visualizer ${DATASET_VIS_SOURCES})
 target_link_libraries(dataset_visualizer PRIVATE SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf)
+
+set(BOTRIS_SOURCES
+    "bottris_stadium.cpp"
+    "SDL2/BotrisVisualizer.cpp"
+    "TBP/Botris.cpp"
+    ${COMMON_SOURCES}
+)
+
+add_executable(sdl2_bottris_stadium ${BOTRIS_SOURCES})
+target_link_libraries(sdl2_bottris_stadium PRIVATE SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf ixwebsocket::ixwebsocket)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/TBP)

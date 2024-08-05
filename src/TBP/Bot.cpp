@@ -122,27 +122,31 @@ void Bot::send(std::string message) {
 
 std::string Bot::receive() {
 #ifdef __linux__
+    using Ch = char;
+#else // _WIN32
+    using Ch = CHAR;
+#endif
+
+    Ch buffer[4096]{};
+
     std::string message;
-    char buffer[4096]{};
-    std::string temp;
+
+#ifdef __linux__
     fgets(buffer, sizeof(buffer), from_child);
     message = buffer;
-    return message;
 #elif _WIN32
-    DWORD dwRead, dwWritten;
-    CHAR chBuf[4096]{};
-    std::string jsnBuf;
+    DWORD dwRead;
     BOOL bSuccess = FALSE;
 
-    bSuccess = ReadFile(g_hChildStd_OUT_Rd, chBuf,
+    bSuccess = ReadFile(g_hChildStd_OUT_Rd, buffer,
         4096, &dwRead, NULL);
     if (!bSuccess || dwRead == 0) return "";
 
-    for (int i = 0; i < dwRead; ++i)
-        jsnBuf.push_back(chBuf[i]);
+    message.append(buffer, dwRead);
 
-    return jsnBuf;
 #endif
+
+    return message;
 }
 
 void Bot::stop() {
@@ -309,7 +313,7 @@ std::vector<Piece> Bot::TBP_suggestion() {
             throw std::runtime_error("invalid piece");
             }(move["location"]["type"]);
 
-            orientation = [](std::string orientation) -> RotationDirection {
+        orientation = [](std::string orientation) -> RotationDirection {
                 if (orientation == "north")
                     return North;
                 else if (orientation == "east")
@@ -321,10 +325,10 @@ std::vector<Piece> Bot::TBP_suggestion() {
                 throw std::runtime_error("invalid orientation");
                 }(move["location"]["orientation"]);
 
-                x = move["location"]["x"].get<int>();
-                y = move["location"]["y"].get<int>();
+        x = move["location"]["x"].get<int>();
+        y = move["location"]["y"].get<int>();
 
-                spin = [](std::string spin) -> spinType {
+        spin = [](std::string spin) -> spinType {
                     if (spin == "none")
                         return spinType::null;
                     else if (spin == "mini")
@@ -332,14 +336,14 @@ std::vector<Piece> Bot::TBP_suggestion() {
                     else if (spin == "full")
                         return spinType::normal;
                     throw std::runtime_error("invalid spin");
-                    }(move["spin"]);
-                    Piece piece = type;
-                    piece.position = Coord(x, y);
-                    piece.spin = spin;
+        }(move["spin"]);
+        Piece piece = type;
+        piece.position = Coord(x, y);
+        piece.spin = spin;
 
-                    for (int i = 0; i < orientation; ++i)
-						piece.rotate(TurnDirection::Right);
-                    moves.push_back(piece);
+        for (int i = 0; i < orientation; ++i)
+		    piece.rotate(TurnDirection::Right);
+        moves.push_back(piece);
     }
     return moves;
 }
@@ -452,10 +456,10 @@ void Bot::TBP_start(const Board& board, const std::vector<PieceType> &queue, std
         start["board"].push_back(tmp);
     }
 
-    send(start.dump());
-
     std::cout << "TBP start: " << start << std::endl
         << std::endl;
+
+    send(start.dump());
 }
 
 void Bot::TBP_new_piece(PieceType t) {
@@ -491,9 +495,9 @@ void Bot::TBP_new_piece(PieceType t) {
         }
         }(t);
 
-        send(new_piece.dump());
-        std::cout << "TBP new piece: " << new_piece << std::endl
-            << std::endl;
+    std::cout << "TBP new piece: " << new_piece << std::endl
+        << std::endl;
+    send(new_piece.dump());
 }
 
 // stops the game itself, a new game CAN be started by sending a start command
@@ -501,9 +505,9 @@ void Bot::TBP_stop() {
     nlohmann::json stop;
     stop["type"] = "stop";
 
-    send(stop.dump());
     std::cout << "TBP stop: " << stop << std::endl
         << std::endl;
+    send(stop.dump());
 }
 
 // if this is sent, the game will end and the bot will be disconnected
@@ -511,7 +515,7 @@ void Bot::TBP_quit() {
     nlohmann::json quit;
     quit["type"] = "quit";
 
-    send(quit.dump());
     std::cout << "TBP quit: " << quit << std::endl
         << std::endl;
+    send(quit.dump());
 }

@@ -4,6 +4,7 @@
   "dependencies": [
     "sdl2",
     "sdl2-ttf",
-    "sdl2-net"
+    "sdl2-net",
+    "ixwebsocket"
   ]
 }
