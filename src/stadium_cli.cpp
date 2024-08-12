@@ -78,13 +78,13 @@ int main(int argc, char* argv[]) {
     int num_games = 0;
     int num_draws = 0;
 
-    auto restart_bot_game = [](Bot& bot, Game& game) {
+    auto restart_bot_game = [](Bot& bot, Game& game, Game&opp) {
         std::vector<PieceType> tbp_queue(Game::queue_size + 1);
         tbp_queue[0] = game.current_piece.type;
         for (size_t i = 0; i < Game::queue_size; i++) {
             tbp_queue[i + 1] = game.queue[i];
         }
-        bot.TBP_start(game.board, tbp_queue, game.hold, game.stats.b2b != 0, game.stats.combo);
+        bot.TBP_start(opp, game.board, tbp_queue, game.hold, game.stats.b2b != 0, game.stats.combo);
     };
     
     // add boolean for changing the value while debugging
@@ -170,7 +170,7 @@ int main(int argc, char* argv[]) {
 
                     bool p2_play = false;
                     if (game.p2_accepts_garbage) {
-                        restart_bot_game(player_2, game.p2_game);
+                        restart_bot_game(player_2, game.p2_game, game.p1_game);
                     } else {
                         if (p2_first_hold) {
                             player_2.TBP_new_piece(game.p2_game.queue[3]);
@@ -181,7 +181,7 @@ int main(int argc, char* argv[]) {
 
                     bool p1_play = false;
                     if (game.p1_accepts_garbage) {
-                        restart_bot_game(player_1, game.p1_game);
+                        restart_bot_game(player_1, game.p1_game, game.p2_game);
                     } else {
                         if (p1_first_hold)
                             player_1.TBP_new_piece(game.p1_game.queue[3]);
@@ -191,10 +191,10 @@ int main(int argc, char* argv[]) {
                     }
 
                     if (p2_play)
-                        player_2.TBP_play(suggestion_2);
+                        player_2.TBP_play(game.p2_game, suggestion_2);
 
                     if (p1_play)
-                        player_1.TBP_play(suggestion_1);
+                        player_1.TBP_play(game.p2_game, suggestion_1);
 
                     frameCount = 0;
                 }
@@ -213,9 +213,9 @@ int main(int argc, char* argv[]) {
             case State::SETUP: {
                 game = VersusGame();
 
-                restart_bot_game(player_2, game.p2_game);
+                restart_bot_game(player_2, game.p2_game, game.p1_game);
 
-                restart_bot_game(player_1, game.p1_game);
+                restart_bot_game(player_1, game.p1_game, game.p2_game);
                 frameCount = 0;
 
                 game_state = State::PLAYING;

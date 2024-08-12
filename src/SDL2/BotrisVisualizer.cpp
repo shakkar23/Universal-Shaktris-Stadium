@@ -118,7 +118,7 @@ bool BotrisVisualizer::update(const Shakkar::inputs& input) {
 						*it = queue_pieces[game.queue.size()];
 					local_bot.TBP_new_piece(queue_pieces[game.queue.size()]);
 				}
-				local_bot.TBP_play(move); // assume the piece placed and everything is correct :)
+				local_bot.TBP_play(opponent_game, move); // assume the piece placed and everything is correct :)
 
 
 				message["payload"]["commands"] = nlohmann::json::array();
@@ -232,6 +232,9 @@ bool BotrisVisualizer::update(const Shakkar::inputs& input) {
 				nlohmann::json payload = json["payload"];
 				nlohmann::json roomData = payload["roomData"];
 				nlohmann::json players = roomData["players"];
+
+
+				opponent_game = Game();
 				// find the player named "Nana"
 				for (auto& player : players) {
 
@@ -261,8 +264,7 @@ bool BotrisVisualizer::update(const Shakkar::inputs& input) {
 						bool back_to_back = gameState["b2b"].get<bool>();
 
 						game = Game();
-
-						game.board = Board();
+						//game.board = Board();
 
 						std::copy(queue_pieces.begin() + 1, queue_pieces.begin() + 1 + game.queue.size(), game.queue.begin());
 						queue_pieces.resize(game.queue.size() + 1);
@@ -273,7 +275,7 @@ bool BotrisVisualizer::update(const Shakkar::inputs& input) {
 						game.stats.b2b = back_to_back;
 						game.garbage_meter = 0;
 
-						local_bot.TBP_start(game.board, queue_pieces, game.hold, game.stats.b2b, game.stats.combo);
+						local_bot.TBP_start(opponent_game, game.board, queue_pieces, game.hold, game.stats.b2b, game.stats.combo);
 
 
 						break;
@@ -283,8 +285,40 @@ bool BotrisVisualizer::update(const Shakkar::inputs& input) {
 			}
 			else if (type == "player_action") {
 
-				// not our event, ignore it
+				// not our event, must be opponent's event, store the board and queue
 				if (json["payload"]["sessionId"].get<std::string>() != session_id) {
+					auto gameState = json["payload"]["gameState"];
+					auto queue = gameState["queue"];
+
+					/*
+					*/
+					std::vector<PieceType> opp_queue_pieces;
+					for (auto& piece : queue) {
+						PieceType type = string_to_piece_type(piece.get<std::string>());
+						opp_queue_pieces.push_back(type);
+					}
+					PieceType type = string_to_piece_type(gameState["current"]["piece"].get<std::string>());
+					opp_queue_pieces.insert(opp_queue_pieces.begin(), type);
+
+					std::optional<PieceType> hold = std::nullopt;
+					if (!gameState["held"].is_null()) {
+						PieceType hold_type = string_to_piece_type(gameState["held"].get<std::string>());
+						hold = hold_type;
+					}
+					int combo = gameState["combo"].get<int>();
+					bool back_to_back = gameState["b2b"].get<bool>();
+
+					opponent_game = Game();
+
+					std::copy(opp_queue_pieces.begin() + 1, opp_queue_pieces.begin() + 1 + opponent_game.queue.size(), opponent_game.queue.begin());
+					opp_queue_pieces.resize(opponent_game.queue.size() + 1);
+
+					opponent_game.hold = hold;
+					opponent_game.current_piece = type;
+					opponent_game.stats.combo = combo;
+					opponent_game.stats.b2b = back_to_back;
+					opponent_game.garbage_meter = 0;
+
 					continue;
 				}
 
@@ -321,7 +355,7 @@ bool BotrisVisualizer::update(const Shakkar::inputs& input) {
 				queue_pieces.insert(queue_pieces.end(), game.queue.begin(), game.queue.end());
 
 
-				local_bot.TBP_start(game.board, queue_pieces, game.hold, game.stats.b2b, game.stats.combo);
+				local_bot.TBP_start(opponent_game, game.board, queue_pieces, game.hold, game.stats.b2b, game.stats.combo);
 
 			}
 			else if (type == "round_over") {
@@ -405,7 +439,7 @@ BotrisVisualizer::Path BotrisVisualizer::pathfind(const Board& board, const Piec
 	// find the move that matches the piece parameter 
 	for (auto& move : moves) {
 		if (move.piece.compact_hash() == piece.compact_hash()) {
-			return  move.path;
+			return move.path;
 		}
 	}
 

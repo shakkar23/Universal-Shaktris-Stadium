@@ -28,6 +28,7 @@ public:
 
 	// used for pathfinding to keep around the previous board state
 	Game game;
+	Game opponent_game;
 	std::string session_id;
 };
 

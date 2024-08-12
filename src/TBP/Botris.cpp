@@ -14,7 +14,7 @@
 Botris::Botris() {
 	ix::initNetSystem();
     std::string API_TOKEN = std::getenv("BOTRIS_API_TOKEN");
-    std::string ROOM_KEY = "cw0edbx81ieo17mrh2akdx6e";
+    std::string ROOM_KEY = "5kcquqcd41kmo2e3ou7xop6r";
     std::string url("wss://botrisbattle.com/ws?token=" + API_TOKEN + "&roomKey=" + ROOM_KEY);
 
     web_socket = std::make_unique<ix::WebSocket>();

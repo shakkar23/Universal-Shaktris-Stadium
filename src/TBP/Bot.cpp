@@ -172,7 +172,7 @@ const std::string& Bot::get_version() const {
     return version;
 }
 
-void Bot::TBP_play(const Piece& piece) {
+void Bot::TBP_play(const Game& opp, const Piece& piece) {
     nlohmann::json play;
     auto px = piece.position.x;
     auto py = piece.position.y;
@@ -207,48 +207,109 @@ void Bot::TBP_play(const Piece& piece) {
             break;
         }
         }(piece.type);
-        play["move"]["location"]["orientation"] = [](RotationDirection dir) -> std::string {
-            switch (dir) {
-            case North:
-                return "north";
-                break;
-            case East:
-                return "east";
-                break;
-            case South:
-                return "south";
-                break;
-            case West:
-                return "west";
-                break;
-            default:
-                throw std::runtime_error("invalid direction");
-                break;
-            }
-            }(piece.rotation);
-            play["move"]["location"]["x"] = piece.position.x;
-            play["move"]["location"]["y"] = piece.position.y;
+    play["move"]["location"]["orientation"] = [](RotationDirection dir) -> std::string {
+        switch (dir) {
+        case North:
+            return "north";
+            break;
+        case East:
+            return "east";
+            break;
+        case South:
+            return "south";
+            break;
+        case West:
+            return "west";
+            break;
+        default:
+            throw std::runtime_error("invalid direction");
+            break;
+        }
+        }(piece.rotation);
+    play["move"]["location"]["x"] = piece.position.x;
+    play["move"]["location"]["y"] = piece.position.y;
 
-            play["move"]["spin"] = [](spinType s) -> std::string {
-                switch (s) {
-                case spinType::null:
-                    return "none";
-                    break;
-                case spinType::mini:
-                    return "mini";
-                    break;
-                case spinType::normal:
-                    return "full";
-                    break;
-                default:
-                    throw std::runtime_error("invalid spin");
-                    break;
-                }
-                }(piece.spin);
+    play["move"]["spin"] = [](spinType s) -> std::string {
+        switch (s) {
+        case spinType::null:
+            return "none";
+            break;
+        case spinType::mini:
+            return "mini";
+            break;
+        case spinType::normal:
+            return "full";
+            break;
+        default:
+            throw std::runtime_error("invalid spin");
+            break;
+        }
+        }(piece.spin);
 
-                send(play.dump());
-                std::cout << "TBP play: " << play << std::endl
-                    << std::endl;
+
+    play["opponents"] = nlohmann::json::array();
+    // hard code only one player
+
+    nlohmann::json tmp_board = nlohmann::json::array();
+
+    for (int y = 0; y < Board::height; ++y) {
+		nlohmann::json tmp = nlohmann::json::array();
+		for (int x = 0; x < Board::width; ++x) {
+			if (opp.board.get(x, y))
+				tmp.push_back("G");
+			else
+				tmp.push_back(nullptr);
+		}
+        tmp_board.push_back(tmp);
+	}
+
+    play["opponents"][0]["board"] = tmp_board;
+
+
+    play["opponents"][0]["combo"] = opp.stats.combo;
+    play["opponents"][0]["back_to_back"] = opp.stats.b2b;
+    play["opponents"][0]["meter"] = opp.garbage_meter;
+
+    play["opponents"][0]["queue"] = nlohmann::json::array();
+
+    auto piece_type_to_str = [](PieceType type) -> std::string {
+		switch (type) {
+		case PieceType::S:
+			return "S";
+			break;
+		case PieceType::Z:
+			return "Z";
+			break;
+		case PieceType::J:
+			return "J";
+			break;
+		case PieceType::L:
+			return "L";
+			break;
+		case PieceType::T:
+			return "T";
+			break;
+		case PieceType::O:
+			return "O";
+			break;
+		case PieceType::I:
+			return "I";
+			break;
+		default:
+			break;
+		}
+        return "";
+	};
+
+    play["opponents"][0]["queue"].push_back(piece_type_to_str(opp.current_piece.type));
+
+    for (const auto& piece : opp.queue) {
+		play["opponents"][0]["queue"].push_back(piece_type_to_str(piece));
+	}
+
+    send(play.dump());
+    std::cout << "TBP play: " << play << std::endl
+        << std::endl;
 }
 
 nlohmann::json Bot::TBP_info() {
@@ -348,7 +409,7 @@ std::vector<Piece> Bot::TBP_suggestion() {
     return moves;
 }
 
-void Bot::TBP_start(const Board& board, const std::vector<PieceType> &queue, std::optional<Piece> hold, bool back_to_back, int combo) {
+void Bot::TBP_start(const Game& opp, const Board& board, const std::vector<PieceType> &queue, std::optional<Piece> hold, bool back_to_back, int combo) {
     nlohmann::json start;
     start["type"] = "start";
 
@@ -455,6 +516,23 @@ void Bot::TBP_start(const Board& board, const std::vector<PieceType> &queue, std
         }
         start["board"].push_back(tmp);
     }
+
+    start["opponents"] = nlohmann::json::array();
+
+    nlohmann::json tmp_board = nlohmann::json::array();
+
+    for (int y = 0; y < Board::height; ++y) {
+		nlohmann::json tmp = nlohmann::json::array();
+		for (int x = 0; x < Board::width; ++x) {
+			if (opp.board.get(x, y))
+				tmp.push_back("G");
+			else
+				tmp.push_back(nullptr);
+		}
+		tmp_board.push_back(tmp);
+	}
+
+    start["opponents"][0]["board"] = tmp_board;
 
     std::cout << "TBP start: " << start << std::endl
         << std::endl;

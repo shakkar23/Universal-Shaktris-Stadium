@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "Board.hpp"
+#include "Game.hpp"
 #include "Piece.hpp"
 #include "json.hpp"
 
@@ -28,7 +29,7 @@ public:
     const std::string& get_author() const;
     const std::string& get_version() const;
 
-    void TBP_play(const Piece& move);
+    void TBP_play(const Game &opp, const Piece& move);
 
     nlohmann::json TBP_info();
 
@@ -36,7 +37,7 @@ public:
 
     std::vector<Piece> TBP_suggestion();
 
-    void TBP_start(const Board& board, const std::vector<PieceType>& queue, std::optional<Piece> hold = std::nullopt, bool back_to_back = false, int combo = 0);
+    void TBP_start(const Game& opp, const Board& board, const std::vector<PieceType>& queue, std::optional<Piece> hold = std::nullopt, bool back_to_back = false, int combo = 0);
 
     void TBP_new_piece(PieceType t);
 

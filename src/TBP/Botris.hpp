@@ -8,6 +8,7 @@
 #include <ixwebsocket/IXNetSystem.h>
 #include <ixwebsocket/IXUserAgent.h>
 
+#undef max
 #include <memory>
 
 // this class will just store a bunch of functions that will be used by the website
