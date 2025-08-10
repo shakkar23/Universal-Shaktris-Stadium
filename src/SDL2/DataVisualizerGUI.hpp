@@ -84,7 +84,12 @@ class DataVisualizerGUI {
         game.state = state;
 
         // set the game 
-        game.p1_game.board = p1.b;
+        game.p1_game.board = Board{};
+        for(size_t x = 0; x < 10; x++)
+            for(size_t y = 0; y < 20; y++) {
+                if(p1.b[x + y * 10] == 1)
+                    game.p1_game.board.set(x,y);
+            }
 
         game.p1_game.current_piece = Piece((PieceType)p1.m_type, Coord(p1.m_x, p1.m_y), (RotationDirection)p1.m_rot, spinType::null);
 
@@ -94,10 +99,13 @@ class DataVisualizerGUI {
 
         game.p1_game.hold = p1.hold == 7 ? std::nullopt : std::optional(Piece((PieceType)p1.hold));
 
-
-
-
-        game.p2_game.board = p2.b;
+        
+        game.p2_game.board = Board{};
+        for(size_t x = 0; x < 10; x++)
+            for(size_t y = 0; y < 20; y++) {
+                if(p2.b[x + y * 10] == 1)
+                    game.p2_game.board.set(x,y);
+            }
 
         game.p2_game.current_piece = Piece((PieceType)p2.m_type, Coord(p2.m_x, p2.m_y), (RotationDirection)p2.m_rot, spinType::null);
 

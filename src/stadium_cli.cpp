@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <thread>
 
 #include "Bot.hpp"
 #include "VersusGame.hpp"
@@ -29,7 +30,7 @@ int main(int argc, char* argv[]) {
         vargs.push_back(arg);
     }
 
-#include "cli_main.hpp"
+//#include "cli_main.hpp"
 
 
     // check if the args are correct
@@ -40,15 +41,12 @@ int main(int argc, char* argv[]) {
 
     // pieces per second that the bots will play at
     float pps = 0.0f;
-    // updates per second
-    constexpr int UPS = 100;
-    constexpr float dt = 1.0f / UPS;
-    int frameCount = 0;
-    float accumulator = 0.0f;
+    float seconds_per_piece = 0.0f;
     double now = std::chrono::high_resolution_clock::now().time_since_epoch().count() / 1e9;
 
     try {
         pps = std::stof(vargs[3]);
+        seconds_per_piece = 1.0f / pps;
     } catch (const std::exception&) {
         std::cerr << "pps must be a number" << std::endl;
         return 1;
@@ -106,108 +104,97 @@ int main(int argc, char* argv[]) {
                 }
 
                 // if need to move then ask the bots for moves
-                if (frameCount >= UPS / pps) {
-                    bool no_moves_returned = false;
-                    Piece suggestion_1 = PieceType::Empty;
-                    Piece suggestion_2 = PieceType::Empty;
+                bool no_moves_returned = false;
+                Piece suggestion_1 = PieceType::Empty;
+                Piece suggestion_2 = PieceType::Empty;
 
-                    player_1.TBP_suggest();
-                    auto p1_suggestions = player_1.TBP_suggestion();
+                player_1.TBP_suggest();
+                auto p1_suggestions = player_1.TBP_suggestion();
 
-                    if (p1_suggestions.empty()) {
-                        // this is a band-aid patch 
-                        // the bot may have different death rules than what we have in our implementation which causes no moves to be returned
-                        game_state = State::SETUP;
-                        break;
-                    }
-
-                    suggestion_1 = p1_suggestions.back();
-
-
-                    player_2.TBP_suggest();
-                    auto p2_suggestions = player_2.TBP_suggestion();
-                    if (p2_suggestions.empty()) {
-                        game_state = State::SETUP;
-                        break;
-                    }
-
-                    suggestion_2 = p2_suggestions.back();
-
-
-                    game.p1_move.null_move = false;
-                    game.p1_move.piece = suggestion_1;
-
-                    bool p1_first_hold = false;
-                    if (!game.p1_game.hold && suggestion_1.type != game.p1_game.current_piece.type) {
-                        p1_first_hold = true;
-                    }
-
-                    bool p2_first_hold = false;
-                    if (!game.p2_game.hold && suggestion_2.type != game.p2_game.current_piece.type) {
-                        p2_first_hold = true;
-                    }
-
-                    game.p2_move.null_move = false;
-                    game.p2_move.piece = suggestion_2;
-
-
-                    game_state_datum p1(make_data(game.p1_game, game.p1_move, game.p1_damage_sent));
-                    game_state_datum p2(make_data(game.p2_game, game.p2_move, game.p2_damage_sent));
-                    VersusGame::State s = VersusGame::State::PLAYING;
-
-                    game.play_moves();
-
-                    p1.attack = game.p1_damage_sent;
-                    p1.damage_received = game.p2_damage_sent;
-                    p1.spun = game.p1_spun;
-
-                    p2.attack = game.p2_damage_sent;
-                    p2.damage_received = game.p1_damage_sent;
-                    p2.spun = game.p2_spun;
-
-                    // save the data to file buffer
-                    push_state(file_buffer, s, p1, p2);
-
-                    bool p2_play = false;
-                    if (game.p2_accepts_garbage) {
-                        restart_bot_game(player_2, game.p2_game, game.p1_game);
-                    } else {
-                        if (p2_first_hold) {
-                            player_2.TBP_new_piece(game.p2_game.queue[3]);
-                        }
-                        player_2.TBP_new_piece(game.p2_game.queue.back());
-                        p2_play = true;
-                    }
-
-                    bool p1_play = false;
-                    if (game.p1_accepts_garbage) {
-                        restart_bot_game(player_1, game.p1_game, game.p2_game);
-                    } else {
-                        if (p1_first_hold)
-                            player_1.TBP_new_piece(game.p1_game.queue[3]);
-                        player_1.TBP_new_piece(game.p1_game.queue.back());
-
-                        p1_play = true;
-                    }
-
-                    if (p2_play)
-                        player_2.TBP_play(game.p2_game, suggestion_2);
-
-                    if (p1_play)
-                        player_1.TBP_play(game.p2_game, suggestion_1);
-
-                    frameCount = 0;
+                if (p1_suggestions.empty()) {
+                    // this is a band-aid patch 
+                    // the bot may have different death rules than what we have in our implementation which causes no moves to be returned
+                    game_state = State::SETUP;
+                    break;
                 }
+
+                suggestion_1 = p1_suggestions.back();
+
+
+                player_2.TBP_suggest();
+                auto p2_suggestions = player_2.TBP_suggestion();
+                if (p2_suggestions.empty()) {
+                    game_state = State::SETUP;
+                    break;
+                }
+
+                suggestion_2 = p2_suggestions.back();
+
+
+                game.p1_move.null_move = false;
+                game.p1_move.piece = suggestion_1;
+
+                bool p1_first_hold = false;
+                if (!game.p1_game.hold && suggestion_1.type != game.p1_game.current_piece.type) {
+                    p1_first_hold = true;
+                }
+
+                bool p2_first_hold = false;
+                if (!game.p2_game.hold && suggestion_2.type != game.p2_game.current_piece.type) {
+                    p2_first_hold = true;
+                }
+
+                game.p2_move.null_move = false;
+                game.p2_move.piece = suggestion_2;
+
+
+                game_state_datum p1(make_data(game.p1_game, game.p1_move, game.p1_damage_sent));
+                game_state_datum p2(make_data(game.p2_game, game.p2_move, game.p2_damage_sent));
+                VersusGame::State s = VersusGame::State::PLAYING;
+
+                game.play_moves();
+
+                p1.attack = game.p1_damage_sent;
+                p1.damage_received = game.p2_damage_sent;
+                p1.spun = game.p1_spun;
+
+                p2.attack = game.p2_damage_sent;
+                p2.damage_received = game.p1_damage_sent;
+                p2.spun = game.p2_spun;
+
+                // save the data to file buffer
+                push_state(file_buffer, s, p1, p2);
+
+                bool p2_play = false;
+                if (game.p2_accepts_garbage) {
+                    restart_bot_game(player_2, game.p2_game, game.p1_game);
+                } else {
+                    if (p2_first_hold) {
+                        player_2.TBP_new_piece(game.p2_game.queue[3]);
+                    }
+                    player_2.TBP_new_piece(game.p2_game.queue.back());
+                    p2_play = true;
+                }
+
+                bool p1_play = false;
+                if (game.p1_accepts_garbage) {
+                    restart_bot_game(player_1, game.p1_game, game.p2_game);
+                } else {
+                    if (p1_first_hold)
+                        player_1.TBP_new_piece(game.p1_game.queue[3]);
+                    player_1.TBP_new_piece(game.p1_game.queue.back());
+
+                    p1_play = true;
+                }
+
+                if (p2_play)
+                    player_2.TBP_play(game.p2_game, suggestion_2);
+
+                if (p1_play)
+                    player_1.TBP_play(game.p2_game, suggestion_1);
 
                 // find out if its time to update the framecount
-                double new_now = std::chrono::high_resolution_clock::now().time_since_epoch().count() / 1e9;
-                double frame_time = new_now - now;
-                now = new_now;
-                accumulator += frame_time;
-                while (accumulator >= dt) {
-                    accumulator -= dt;
-                    frameCount++;
-                }
+                std::this_thread::sleep_until(std::chrono::steady_clock::now() + std::chrono::milliseconds(int(seconds_per_piece * 1000.0f)));
             } break;
 
             case State::SETUP: {
@@ -216,7 +203,6 @@ int main(int argc, char* argv[]) {
                 restart_bot_game(player_2, game.p2_game, game.p1_game);
 
                 restart_bot_game(player_1, game.p1_game, game.p2_game);
-                frameCount = 0;
 
                 game_state = State::PLAYING;
             } break;
@@ -252,7 +238,13 @@ int main(int argc, char* argv[]) {
 game_state_datum make_data(const Game& game, const Move& move, int& damage_sent)
 {
     game_state_datum d{};
-    d.b = game.board;
+
+    std::array<u8, 10*20> board{};
+    for(size_t x = 0; x < 10; x++)
+        for(size_t y = 0; y < 20; y++) {
+            board[x + y * 10] = game.board.get(x,y);
+        }
+    d.b = board;
 
     d.p_type = (u8)game.current_piece.type;
 

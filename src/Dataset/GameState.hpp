@@ -7,7 +7,7 @@ using u8 = uint8_t;
 struct game_state_datum {
 
     // board
-    Board b;
+    std::array<u8, 10*20> b;
 
     // current piece type
     u8 p_type;
