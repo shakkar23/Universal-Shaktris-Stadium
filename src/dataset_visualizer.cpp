@@ -24,6 +24,10 @@ int main(int argc, char* argv[]) {
 
     Shakkar::inputs input;
 
+    if(argc > 1) {
+        input.updateDroppedFile(argv[1]);
+    }
+
     bool gameRunning = true;
     SDL_Event event;
 
