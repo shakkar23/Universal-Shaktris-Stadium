@@ -36,7 +36,9 @@ set(UTS_SOURCES
 )
 
 
+if( NOT WIN32)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64-v3")
+endif()
 
 add_executable(sdl2_stadium ${UTS_SOURCES})
 target_link_libraries(sdl2_stadium PRIVATE SDL2::SDL2 SDL2::SDL2main ${TTF_LIBS})
