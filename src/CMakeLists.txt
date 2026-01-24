@@ -50,9 +50,23 @@ set(UTS_CLI_SOURCES
     "TBP/Bot.cpp"
 )
 
+
+option(SQLITE_ENABLE_COLUMN_METADATA "Enable Column::getColumnOriginName(). Require support from sqlite3 library." ON)
+
+option(SQLITE_ENABLE_ASSERT_HANDLER "Enable the user definition of a assertion_failed() handler." OFF)
+
+option(SQLITE_HAS_CODEC "Enable database encryption API. Not available in the public release of SQLite." OFF)
+
+option(SQLITE_USE_LEGACY_STRUCT "Fallback to forward declaration of legacy struct sqlite3_value (pre SQLite 3.19)" OFF)
+
+option(SQLITE_OMIT_LOAD_EXTENSION "Enable omit load extension" OFF)
+
+
+
+add_subdirectory(sqlite3)
+
 add_executable(sdl2_stadium_cli ${UTS_CLI_SOURCES} )
-
-
+target_link_libraries(sdl2_stadium_cli PRIVATE sqlite3)
 
 set(VISUALIZER_SOURCES
     "tbp_visualizer.cpp"
