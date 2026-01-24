@@ -77,7 +77,7 @@ inline auto string_to_piece_type(const std::string& str) -> PieceType {
 		return PieceType::I;
 	}
 	else {
-		throw;
+		throw std::runtime_error("non existent piece type");
 	}
 }
 
@@ -105,7 +105,7 @@ inline auto json_to_color(const nlohmann::json& js) -> ColorType {
 	case 'G':
 		return ColorType::Garbage;
 	default:
-		throw;
+		throw std::runtime_error("out of bounds color type");
 		break;
 	}
 }
@@ -144,7 +144,7 @@ inline auto int_to_rotation(int num) -> RotationDirection {
 	case 3:
 		return RotationDirection::West;
 	default:
-		throw;
+		throw std::runtime_error("out of bounds rotation");
 		break;
 	}
 
