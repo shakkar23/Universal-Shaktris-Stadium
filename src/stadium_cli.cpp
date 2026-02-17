@@ -18,7 +18,13 @@
 void push_state(sqlite3* db, VersusGame::State& state, game_state_datum& p1, game_state_datum& p2, sqlite3_int64 game_uuid, int move_index);
 
 game_state_datum make_data(const Game& game, const Move& move, int damage_sent);
-
+struct game_state {
+	VersusGame::State state;
+	game_state_datum p1;
+	game_state_datum p2;
+	sqlite3_int64 game_uuid;
+	int move_index;
+};
 
 enum class State {
 	PLAYING,
@@ -51,18 +57,19 @@ bool create_table(sqlite3* db) {
 		"game_id INTEGER NOT NULL, "
 		"move_index INTEGER NOT NULL, "
 		"state TEXT NOT NULL, "
-		"p1_board INTEGER NOT NULL, p1_current_piece INTEGER NOT NULL, p1_move_piece_type TEXT NOT NULL, "
+		"p1_board BLOB NOT NULL, p1_current_piece TEXT NOT NULL, p1_move_piece_type TEXT NOT NULL, "
 		"p1_move_piece_rot INTEGER NOT NULL, p1_move_piece_x INTEGER NOT NULL, p1_move_piece_y INTEGER NOT NULL, "
 		"p1_meter INTEGER NOT NULL, p1_attack INTEGER NOT NULL, p1_damage_received INTEGER NOT NULL, "
 		"p1_spun INTEGER NOT NULL, "
 		"p1_queue_0 TEXT NOT NULL, p1_queue_1 TEXT NOT NULL, p1_queue_2 TEXT NOT NULL, p1_queue_3 TEXT NOT NULL, p1_queue_4 TEXT NOT NULL, "
 		"p1_hold TEXT NOT NULL, "
-		"p2_board INTEGER NOT NULL, p2_current_piece INTEGER NOT NULL, p2_move_piece_type TEXT NOT NULL, "
+		"p2_board BLOB NOT NULL, p2_current_piece TEXT NOT NULL, p2_move_piece_type TEXT NOT NULL, "
 		"p2_move_piece_rot INTEGER NOT NULL, p2_move_piece_x INTEGER NOT NULL, p2_move_piece_y INTEGER NOT NULL, "
 		"p2_meter INTEGER NOT NULL, p2_attack INTEGER NOT NULL, p2_damage_received INTEGER NOT NULL, "
 		"p2_spun INTEGER NOT NULL, "
 		"p2_queue_0 TEXT NOT NULL, p2_queue_1 TEXT NOT NULL, p2_queue_2 TEXT NOT NULL, p2_queue_3 TEXT NOT NULL, p2_queue_4 TEXT NOT NULL, "
-		"p2_hold TEXT NOT NULL"
+		"p2_hold TEXT NOT NULL, "
+		"PRIMARY KEY(game_id, move_index)"
 		");";
 
 	// sqlite3_exec is the best choice for simple CREATE/DROP/DELETE commands
@@ -87,14 +94,13 @@ void sigint_handler(int signal) {
 
 int main(int argc, char* argv[]) {
 	// the args should look like this: ./a.out <bot1> <bot2> <pps>
-
 	std::span<char*> args(argv, argc);
 	// push to vector
 	std::vector<std::string> vargs;
 	for(auto& arg : args) {
 		vargs.push_back(arg);
 	}
-
+	vargs = { "lmao", "E:/PC/temp/cc-tbp.exe", "E:/PC/temp/cc-tbp.exe", "2" };
 	// check if the args are correct
 	if(vargs.size() < 4) {
 		std::cerr << "Usage: " << std::filesystem::path(vargs[0]).filename() << " <bot1> <bot2> <pps> <optional:save_path>" << std::endl;
@@ -129,6 +135,7 @@ int main(int argc, char* argv[]) {
 	VersusGame game;
 	std::string binary_path = vargs.size() > 4 ? vargs[4] : "database.db";
 
+	std::vector<game_state> game_states;
 	int sql_ret = sqlite3_open(binary_path.c_str(), &database);
 
 	if(sql_ret != SQLITE_OK) {
@@ -181,8 +188,7 @@ int main(int argc, char* argv[]) {
 					Move empty_move;
 					game_state_datum p1(make_data(game.p1_game, empty_move, 0));
 					game_state_datum p2(make_data(game.p2_game, empty_move, 0));
-
-					push_state(database, game.state, p1, p2, game_uuid, move_index);
+					game_states.push_back({ game.state, p1, p2, game_uuid, move_index });
 					game_uuid = std::random_device()();
 					move_index = 0;
 					break;
@@ -248,7 +254,7 @@ int main(int argc, char* argv[]) {
 				p2.spun = game.p2_spun;
 
 				// save the data to file buffer
-				push_state(database, s, p1, p2, game_uuid, move_index);
+				game_states.push_back({ s, p1, p2, game_uuid, move_index });
 				move_index++;
 
 				bool p2_play = false;
@@ -307,7 +313,10 @@ int main(int argc, char* argv[]) {
 				// clear console
 				std::cout << "\033[2J\033[1;1H";
 				std::cout << "Player 1 wins: " << num_wins[0] << "\nPlayer 2 wins: " << num_wins[1] << "\nDraws: " << num_draws << "\nTotal games: " << num_games << std::endl;
-
+				for(auto& state : game_states) {
+					push_state(database, state.state, state.p1, state.p2, state.game_uuid, state.move_index);
+				}
+				game_states.clear();
 				game_state = State::SETUP;
 			} break;
 
