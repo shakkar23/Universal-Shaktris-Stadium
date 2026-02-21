@@ -15,6 +15,8 @@
 
 #include "sqlite3.h"
 
+#include <algorithm>
+
 void push_state(sqlite3* db, VersusGame::State& state, game_state_datum& p1, game_state_datum& p2, sqlite3_int64 game_uuid, int move_index);
 
 game_state_datum make_data(const Game& game, const Move& move, int damage_sent);
@@ -84,6 +86,39 @@ bool create_table(sqlite3* db) {
 	return true;
 }
 
+int get_next_game_id(sqlite3* db) {
+	// Static statement persists for the lifetime of the program
+	static sqlite3_stmt* stmt = nullptr;
+
+	// Initialize the statement only once
+	if(stmt == nullptr) {
+		const char* sql = "SELECT IFNULL(MAX(game_id), 0) + 1 FROM Data;";
+		int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+
+		if(rc != SQLITE_OK) {
+			auto err = std::string("Failed to prepare statement: ") + sqlite3_errmsg(db);
+			std::cerr << err << std::endl;
+			throw std::runtime_error(err);
+		}
+	}
+
+	int next_id = 1; // Default if table is empty
+	int rc = sqlite3_step(stmt);
+
+	if(rc == SQLITE_ROW) {
+		next_id = sqlite3_column_int(stmt, 0);
+	} else {
+		auto err = std::string("Execution failed: ") + sqlite3_errmsg(db);
+		std::cerr << "Execution failed: " << sqlite3_errmsg(db) << std::endl;
+		throw std::runtime_error(err);
+	}
+
+	// Reset the statement so it can be used again next time
+	sqlite3_reset(stmt);
+
+	return next_id;
+}
+
 void sigint_handler(int signal) {
 	printf("\n\nsaving progress so far...\n");
 	sqlite3_finalize(stmt);
@@ -100,7 +135,7 @@ int main(int argc, char* argv[]) {
 	for(auto& arg : args) {
 		vargs.push_back(arg);
 	}
-	vargs = { "lmao", "E:/PC/temp/cc-tbp.exe", "E:/PC/temp/cc-tbp.exe", "2" };
+	vargs = { "lmao", "E:/PC/temp/cc-tbp.exe", "E:/PC/temp/cc-tbp.exe", "12" };
 	// check if the args are correct
 	if(vargs.size() < 4) {
 		std::cerr << "Usage: " << std::filesystem::path(vargs[0]).filename() << " <bot1> <bot2> <pps> <optional:save_path>" << std::endl;
@@ -159,7 +194,7 @@ int main(int argc, char* argv[]) {
 	std::signal(SIGINT, sigint_handler);
 
 	State game_state = State::SETUP;
-	sqlite3_int64 game_uuid = std::random_device()();
+	int game_uuid = get_next_game_id(database);
 	int move_index = 0;
 
 	// recorded stats
@@ -189,8 +224,6 @@ int main(int argc, char* argv[]) {
 					game_state_datum p1(make_data(game.p1_game, empty_move, 0));
 					game_state_datum p2(make_data(game.p2_game, empty_move, 0));
 					game_states.push_back({ game.state, p1, p2, game_uuid, move_index });
-					game_uuid = std::random_device()();
-					move_index = 0;
 					break;
 				}
 
@@ -316,7 +349,12 @@ int main(int argc, char* argv[]) {
 				for(auto& state : game_states) {
 					push_state(database, state.state, state.p1, state.p2, state.game_uuid, state.move_index);
 				}
-				game_states.clear();
+				game_uuid = get_next_game_id(database);
+				move_index = 0;
+				if(std::ranges::count_if(game_states, [](const auto& state) {return state.state != VersusGame::State::PLAYING; }) != 1) {
+					throw std::runtime_error("uh oh");
+				}
+				game_states.clear(); 
 				game_state = State::SETUP;
 			} break;
 
@@ -369,7 +407,7 @@ const char* type_to_str(u8 type) {
 	"O",
 	"I",
 	"NULL"
-	} [type] ;
+	} .at(type);
 }
 
 void push_state(sqlite3* db, VersusGame::State& state, game_state_datum& p1, game_state_datum& p2, sqlite3_int64 game_uuid, int move_index) {
@@ -390,7 +428,7 @@ void push_state(sqlite3* db, VersusGame::State& state, game_state_datum& p1, gam
 	index++;
 	sqlite3_bind_int(stmt, index, move_index);
 	index++;
-	sqlite3_bind_text(stmt, index, std::array{ "PLAYING","P1_WIN","P2_WIN","DRAW" } [(size_t)state] , -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, index, std::array{ "PLAYING","P1_WIN","P2_WIN","DRAW" } .at((size_t)state) , -1, SQLITE_STATIC);
 	index++;
 	sqlite3_bind_blob(stmt, index, p1.b.data(), 200, SQLITE_TRANSIENT);
 	index++;
@@ -464,6 +502,7 @@ void push_state(sqlite3* db, VersusGame::State& state, game_state_datum& p1, gam
 		int offset = sqlite3_error_offset(db);
 		std::cout << "Error at character" << offset << sqlite3_errmsg(db) << std::endl;
 		std::cout << index << std::endl;
+		throw std::runtime_error(std::string("insert_error") + sqlite3_errmsg(database) + '\n' + "Error at character" + std::to_string(offset) + sqlite3_errmsg(db));
 	}
 
 	sqlite3_reset(stmt);
