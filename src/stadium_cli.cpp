@@ -49,7 +49,7 @@ struct sqlite_row {
 
 void push_state(sqlite3* db, VersusGame::State& state, sqlite_row& p1, sqlite_row& p2, sqlite3_int64 game_uuid, int move_index);
 
-static sqlite_row prepare_row(const Game& game, const Move& move, int damage_sent);
+static sqlite_row prepare_row(const Game& game, const Move& move, int damage_sent.int meter);
 
 struct game_state {
 	VersusGame::State state;
