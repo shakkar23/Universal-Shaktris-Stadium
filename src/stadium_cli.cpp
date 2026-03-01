@@ -17,13 +17,44 @@
 
 #include <algorithm>
 
-void push_state(sqlite3* db, VersusGame::State& state, game_state_datum& p1, game_state_datum& p2, sqlite3_int64 game_uuid, int move_index);
+using u8 = uint8_t;
 
-game_state_datum make_data(const Game& game, const Move& move, int damage_sent);
+
+struct sqlite_row {
+
+	// board
+	std::array<u8, 10 * 20> b;
+
+	// current piece type
+	u8 p_type;
+
+	// move
+	u8 m_type;
+	u8 m_rot;
+	u8 m_x;
+	u8 m_y;
+
+	// extra data
+	u8 meter;
+	u8 attack;
+	u8 damage_received;
+	u8 spun;
+	u8 queue[5];
+	u8 hold;
+	int combo;
+	int b2b;
+	int currentcombopower;
+	int currentbtbchainpower;
+};
+
+void push_state(sqlite3* db, VersusGame::State& state, sqlite_row& p1, sqlite_row& p2, sqlite3_int64 game_uuid, int move_index);
+
+static sqlite_row prepare_row(const Game& game, const Move& move, int damage_sent);
+
 struct game_state {
 	VersusGame::State state;
-	game_state_datum p1;
-	game_state_datum p2;
+	sqlite_row p1;
+	sqlite_row p2;
 	sqlite3_int64 game_uuid;
 	int move_index;
 };
@@ -38,11 +69,15 @@ sqlite3* database{ nullptr };
 sqlite3_stmt* stmt = nullptr;
 
 bool init_stmt(sqlite3* db) {
-	const char* stmt_str = "INSERT INTO Data (game_id, move_index, state,p1_board,p1_current_piece,p1_move_piece_type,p1_move_piece_rot,p1_move_piece_x,p1_move_piece_y,p1_meter,p1_attack,p1_damage_received,p1_spun,p1_queue_0,p1_queue_1,p1_queue_2,p1_queue_3,p1_queue_4,p1_hold,p2_board,p2_current_piece,p2_move_piece_type,p2_move_piece_rot,p2_move_piece_x,p2_move_piece_y,p2_meter,p2_attack,p2_damage_received,p2_spun,p2_queue_0,p2_queue_1,p2_queue_2,p2_queue_3,p2_queue_4,p2_hold) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
+	const char* stmt_str = "INSERT INTO Data (game_id, move_index, state,"
+		"p1_board,p1_current_piece,p1_move_piece_type,p1_move_piece_rot,p1_move_piece_x,p1_move_piece_y,p1_meter,p1_attack,p1_damage_received,p1_spun,p1_queue_0,p1_queue_1,p1_queue_2,p1_queue_3,p1_queue_4,p1_hold,p1_combo, p1_b2b, p1_currentcombopower, p1_currentbtbchainpower,"
+		"p2_board,p2_current_piece,p2_move_piece_type,p2_move_piece_rot,p2_move_piece_x,p2_move_piece_y,p2_meter,p2_attack,p2_damage_received,p2_spun,p2_queue_0,p2_queue_1,p2_queue_2,p2_queue_3,p2_queue_4,p2_hold,p2_combo, p2_b2b, p2_currentcombopower, p2_currentbtbchainpower"
+		") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
 
 	int ret = sqlite3_prepare(db, stmt_str, -1, &stmt, nullptr);
 	if(ret != SQLITE_OK) {
 		fprintf(stderr, "Failed to prepare statement: %s\n", sqlite3_errmsg(db));
+		throw std::runtime_error("");
 		return false;
 	}
 
@@ -64,13 +99,22 @@ bool create_table(sqlite3* db) {
 		"p1_meter INTEGER NOT NULL, p1_attack INTEGER NOT NULL, p1_damage_received INTEGER NOT NULL, "
 		"p1_spun INTEGER NOT NULL, "
 		"p1_queue_0 TEXT NOT NULL, p1_queue_1 TEXT NOT NULL, p1_queue_2 TEXT NOT NULL, p1_queue_3 TEXT NOT NULL, p1_queue_4 TEXT NOT NULL, "
-		"p1_hold TEXT NOT NULL, "
+		"p1_hold TEXT NOT NULL, " 
+		"p1_combo INTEGER NOT NULL, "
+		"p1_b2b INTEGER NOT NULL, "
+		"p1_currentcombopower INTEGER NOT NULL, "
+		"p1_currentbtbchainpower INTEGER NOT NULL, "
+
 		"p2_board BLOB NOT NULL, p2_current_piece TEXT NOT NULL, p2_move_piece_type TEXT NOT NULL, "
 		"p2_move_piece_rot INTEGER NOT NULL, p2_move_piece_x INTEGER NOT NULL, p2_move_piece_y INTEGER NOT NULL, "
 		"p2_meter INTEGER NOT NULL, p2_attack INTEGER NOT NULL, p2_damage_received INTEGER NOT NULL, "
 		"p2_spun INTEGER NOT NULL, "
 		"p2_queue_0 TEXT NOT NULL, p2_queue_1 TEXT NOT NULL, p2_queue_2 TEXT NOT NULL, p2_queue_3 TEXT NOT NULL, p2_queue_4 TEXT NOT NULL, "
 		"p2_hold TEXT NOT NULL, "
+		"p2_combo INTEGER NOT NULL, "
+		"p2_b2b INTEGER NOT NULL, "
+		"p2_currentcombopower INTEGER NOT NULL, "
+		"p2_currentbtbchainpower INTEGER NOT NULL, "
 		"PRIMARY KEY(game_id, move_index)"
 		");";
 
@@ -81,6 +125,7 @@ bool create_table(sqlite3* db) {
 		fprintf(stderr, "SQL error (Create Table): %s\n", err_msg);
 		// We must free the error message allocated by sqlite3_exec
 		sqlite3_free(err_msg);
+		throw std::runtime_error("");
 		return false;
 	}
 	return true;
@@ -115,15 +160,12 @@ int get_next_game_id(sqlite3* db) {
 
 	// Reset the statement so it can be used again next time
 	sqlite3_reset(stmt);
-
 	return next_id;
 }
 
 void sigint_handler(int signal) {
-	printf("\n\nsaving progress so far...\n");
 	sqlite3_finalize(stmt);
 	sqlite3_close(database);
-	printf("saved!\n");
 	std::abort();
 }
 
@@ -135,7 +177,8 @@ int main(int argc, char* argv[]) {
 	for(auto& arg : args) {
 		vargs.push_back(arg);
 	}
-	vargs = { "lmao", "E:/PC/temp/cc-tbp.exe", "E:/PC/temp/cc-tbp.exe", "12" };
+	if(vargs.size() < 3)
+		vargs = { "lmao", "E:/PC/temp/cc-tbp.exe", "E:/PC/temp/cc-tbp.exe", "3", "database.db" };
 	// check if the args are correct
 	if(vargs.size() < 4) {
 		std::cerr << "Usage: " << std::filesystem::path(vargs[0]).filename() << " <bot1> <bot2> <pps> <optional:save_path>" << std::endl;
@@ -172,7 +215,7 @@ int main(int argc, char* argv[]) {
 
 	std::vector<game_state> game_states;
 	int sql_ret = sqlite3_open(binary_path.c_str(), &database);
-
+	
 	if(sql_ret != SQLITE_OK) {
 		std::cout << "couldnt open the database: " << binary_path << ", " << sqlite3_errmsg(database) << std::endl;
 		sqlite3_close(database);
@@ -221,8 +264,8 @@ int main(int argc, char* argv[]) {
 					game_state = State::GAME_OVER;
 
 					Move empty_move;
-					game_state_datum p1(make_data(game.p1_game, empty_move, 0));
-					game_state_datum p2(make_data(game.p2_game, empty_move, 0));
+					sqlite_row p1(prepare_row(game.p1_game, empty_move, 0, game.p1_meter));
+					sqlite_row p2(prepare_row(game.p2_game, empty_move, 0, game.p2_meter));
 					game_states.push_back({ game.state, p1, p2, game_uuid, move_index });
 					break;
 				}
@@ -272,8 +315,8 @@ int main(int argc, char* argv[]) {
 				game.p2_move.piece = suggestion_2;
 
 
-				game_state_datum p1(make_data(game.p1_game, game.p1_move, game.p1_damage_sent));
-				game_state_datum p2(make_data(game.p2_game, game.p2_move, game.p2_damage_sent));
+				sqlite_row p1(prepare_row(game.p1_game, game.p1_move, game.p1_damage_sent));
+				sqlite_row p2(prepare_row(game.p2_game, game.p2_move, game.p2_damage_sent));
 				VersusGame::State s = VersusGame::State::PLAYING;
 
 				game.play_moves();
@@ -368,8 +411,8 @@ int main(int argc, char* argv[]) {
 	return 0;
 }
 
-game_state_datum make_data(const Game& game, const Move& move, int damage_sent) {
-	game_state_datum d{};
+sqlite_row prepare_row(const Game& game, const Move& move, int damage_sent, int meter) {
+	sqlite_row d{};
 
 	std::array<u8, 10 * 20> board{};
 	for(size_t x = 0; x < 10; x++)
@@ -385,7 +428,7 @@ game_state_datum make_data(const Game& game, const Move& move, int damage_sent) 
 	d.m_x = (u8)move.piece.position.x;
 	d.m_y = (u8)move.piece.position.y;
 
-	d.meter = (u8)game.garbage_meter;
+	d.meter = (u8)meter;
 
 	d.queue[0] = (u8)game.queue[0];
 	d.queue[1] = (u8)game.queue[1];
@@ -394,6 +437,10 @@ game_state_datum make_data(const Game& game, const Move& move, int damage_sent) 
 	d.queue[4] = (u8)game.queue[4];
 
 	d.hold = game.hold.has_value() ? (u8)game.hold.value().type : 7;
+	d.combo = game.stats.combo;
+	d.b2b = game.stats.b2b;
+	d.currentcombopower = game.stats.currentcombopower;
+	d.currentbtbchainpower = game.stats.currentbtbchainpower;
 	return d;
 }
 
@@ -410,7 +457,7 @@ const char* type_to_str(u8 type) {
 	} .at(type);
 }
 
-void push_state(sqlite3* db, VersusGame::State& state, game_state_datum& p1, game_state_datum& p2, sqlite3_int64 game_uuid, int move_index) {
+void push_state(sqlite3* db, VersusGame::State& state, sqlite_row& p1, sqlite_row& p2, sqlite3_int64 game_uuid, int move_index) {
 
 	/*
 	file_buffer.append_range(std::span((u8*)&game.state, sizeof(VersusGame::State))); // one byte
@@ -418,8 +465,8 @@ void push_state(sqlite3* db, VersusGame::State& state, game_state_datum& p1, gam
 	file_buffer.append_range(std::span((u8*)&p2, sizeof(data))); // 52 bytes
 	//
 	file_buffer.insert(file_buffer.end(), (u8*)&state, (u8*)&state + sizeof(VersusGame::State));
-	file_buffer.insert(file_buffer.end(), (u8*)&p1, (u8*)&p1 + sizeof(game_state_datum));
-	file_buffer.insert(file_buffer.end(), (u8*)&p2, (u8*)&p2 + sizeof(game_state_datum));
+	file_buffer.insert(file_buffer.end(), (u8*)&p1, (u8*)&p1 + sizeof(sqlite_row));
+	file_buffer.insert(file_buffer.end(), (u8*)&p2, (u8*)&p2 + sizeof(sqlite_row));
 	*/
 	int index = 1;
 	int rv;
@@ -462,6 +509,15 @@ void push_state(sqlite3* db, VersusGame::State& state, game_state_datum& p1, gam
 	index++;
 	sqlite3_bind_text(stmt, index, type_to_str(p1.hold), -1, SQLITE_STATIC);
 	index++;
+	sqlite3_bind_int(stmt, index, p1.combo);
+	index++;
+	sqlite3_bind_int(stmt, index, p1.b2b);
+	index++;
+	sqlite3_bind_int(stmt, index, p1.currentcombopower);
+	index++;
+	sqlite3_bind_int(stmt, index, p1.currentbtbchainpower);
+	index++;
+
 
 	sqlite3_bind_blob(stmt, index, p2.b.data(), 200, SQLITE_TRANSIENT);
 	index++;
@@ -494,15 +550,24 @@ void push_state(sqlite3* db, VersusGame::State& state, game_state_datum& p1, gam
 	sqlite3_bind_text(stmt, index, type_to_str(p2.queue[4]), -1, SQLITE_STATIC);
 	index++;
 	sqlite3_bind_text(stmt, index, type_to_str(p2.hold), -1, SQLITE_STATIC);
+	index++;
+	sqlite3_bind_int(stmt, index, p2.combo);
+	index++;
+	sqlite3_bind_int(stmt, index, p2.b2b);
+	index++;
+	sqlite3_bind_int(stmt, index, p2.currentcombopower);
+	index++;
+	sqlite3_bind_int(stmt, index, p2.currentbtbchainpower);
+	index++;
 
 	rv = sqlite3_step(stmt);
 
 	if(rv != SQLITE_DONE) {
 		std::cout << "insert error: " << sqlite3_errmsg(database) << std::endl;
 		int offset = sqlite3_error_offset(db);
-		std::cout << "Error at character" << offset << sqlite3_errmsg(db) << std::endl;
-		std::cout << index << std::endl;
-		throw std::runtime_error(std::string("insert_error") + sqlite3_errmsg(database) + '\n' + "Error at character" + std::to_string(offset) + sqlite3_errmsg(db));
+		std::cout << "Error at character: " << offset << std::endl << sqlite3_errmsg(db) << std::endl;
+		std::cout << index << " " << game_uuid <<" "<< rv<<" "<<move_index << std::endl;
+		throw std::runtime_error(std::string("insert_error: ") + sqlite3_errmsg(database) + '\n' + "Error at character: " + std::to_string(offset) + sqlite3_errmsg(db));
 	}
 
 	sqlite3_reset(stmt);
