@@ -49,7 +49,7 @@ struct sqlite_row {
 
 void push_state(sqlite3* db, VersusGame::State& state, sqlite_row& p1, sqlite_row& p2, sqlite3_int64 game_uuid, int move_index);
 
-static sqlite_row prepare_row(const Game& game, const Move& move, int damage_sent.int meter);
+static sqlite_row prepare_row(const Game& game, const Move& move, int damage_sent, int meter);
 
 struct game_state {
 	VersusGame::State state;
@@ -169,7 +169,29 @@ void sigint_handler(int signal) {
 	std::abort();
 }
 
+constexpr auto SETTINGS_PATH = "stadium_cli_settings.json";
+void init_settings() {
+	auto rjson = R"({
+	"num_games":100,
+	"db_path":"database.db",
+	"min_nodes":2000,
+	"pps":2
+})";
+	auto exists = std::filesystem::exists(SETTINGS_PATH);
+	if(exists)
+		return;
+
+	std::fstream f(SETTINGS_PATH, std::ios::out);
+	f << rjson;
+}
+nlohmann::json get_settings() {
+	std::fstream f(SETTINGS_PATH, std::ios::in);
+	return nlohmann::json::parse((std::stringstream() << f.rdbuf()).str());
+}
+
 int main(int argc, char* argv[]) {
+	init_settings();
+	auto settings = get_settings();
 	// the args should look like this: ./a.out <bot1> <bot2> <pps>
 	std::span<char*> args(argv, argc);
 	// push to vector
@@ -177,11 +199,11 @@ int main(int argc, char* argv[]) {
 	for(auto& arg : args) {
 		vargs.push_back(arg);
 	}
-	if(vargs.size() < 3)
-		vargs = { "lmao", "E:/PC/temp/cc-tbp.exe", "E:/PC/temp/cc-tbp.exe", "3", "database.db" };
+	if(vargs.size() < 2)
+		vargs = { "lmao", "/root/cold-clear/target/release/cc-tbp", "/root/cold-clear/target/release/cc-tbp" };
 	// check if the args are correct
-	if(vargs.size() < 4) {
-		std::cerr << "Usage: " << std::filesystem::path(vargs[0]).filename() << " <bot1> <bot2> <pps> <optional:save_path>" << std::endl;
+	if(vargs.size() < 2) {
+		std::cerr << "Usage: " << std::filesystem::path(vargs[0]).filename() << " <bot1> <bot2>" << std::endl;
 		return 1;
 	}
 
@@ -191,7 +213,7 @@ int main(int argc, char* argv[]) {
 	double now = std::chrono::high_resolution_clock::now().time_since_epoch().count() / 1e9;
 
 	try {
-		pps = std::stof(vargs[3]);
+		pps = settings["pps"].get<double>();
 		seconds_per_piece = 1.0f / pps;
 	} catch(const std::exception&) {
 		std::cerr << "pps must be a number" << std::endl;
@@ -202,16 +224,16 @@ int main(int argc, char* argv[]) {
 	Bot player_1;
 
 	// start the bot
-	player_1.start(vargs[1].c_str());
+	player_1.start(vargs[1].c_str(), settings["min_nodes"].get<long long>());
 
 	Bot player_2;
 
 	// start the bot
-	player_2.start(vargs[2].c_str());
+	player_2.start(vargs[2].c_str(), settings["min_nodes"].get<long long>());
 
 	// create the game
 	VersusGame game;
-	std::string binary_path = vargs.size() > 4 ? vargs[4] : "database.db";
+	std::string binary_path = settings["db_path"].get<std::string>();
 
 	std::vector<game_state> game_states;
 	int sql_ret = sqlite3_open(binary_path.c_str(), &database);
@@ -242,7 +264,7 @@ int main(int argc, char* argv[]) {
 
 	// recorded stats
 	std::array<int, 2> num_wins = { 0, 0 };
-	int num_games = 0;
+	long long num_games = 0;
 	int num_draws = 0;
 
 	auto restart_bot_game = [](Bot& bot, Game& game, Game& opp) {
@@ -255,8 +277,8 @@ int main(int argc, char* argv[]) {
 	};
 
 	// add boolean for changing the value while debugging
-	bool running = true;
-	while(running) {
+	const long long total_num_games = settings["num_games"].get<long long>();
+	while(num_games < total_num_games) {
 		switch(game_state) {
 			case State::PLAYING:
 			{
@@ -315,8 +337,8 @@ int main(int argc, char* argv[]) {
 				game.p2_move.piece = suggestion_2;
 
 
-				sqlite_row p1(prepare_row(game.p1_game, game.p1_move, game.p1_damage_sent));
-				sqlite_row p2(prepare_row(game.p2_game, game.p2_move, game.p2_damage_sent));
+				sqlite_row p1(prepare_row(game.p1_game, game.p1_move, game.p1_damage_sent, game.p1_meter));
+				sqlite_row p2(prepare_row(game.p2_game, game.p2_move, game.p2_damage_sent, game.p2_meter));
 				VersusGame::State s = VersusGame::State::PLAYING;
 
 				game.play_moves();
@@ -362,7 +384,8 @@ int main(int argc, char* argv[]) {
 					player_1.TBP_play(game.p2_game, suggestion_1);
 
 				// find out if its time to update the framecount
-				std::this_thread::sleep_until(std::chrono::steady_clock::now() + std::chrono::milliseconds(int(seconds_per_piece * 1000.0f)));
+				if(not player_1.should_skip_suggest() or not player_2.should_skip_suggest())
+					std::this_thread::sleep_until(std::chrono::steady_clock::now() + std::chrono::milliseconds(int(seconds_per_piece * 1000.0f)));
 			} break;
 
 			case State::SETUP:

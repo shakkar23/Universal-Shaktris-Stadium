@@ -7,7 +7,7 @@ bool BotrisVisualizer::update(const Shakkar::inputs& input) {
 		std::string path = input.getDroppedFile();
 
 		if (!path.empty()) {
-			local_bot.start(path.c_str());
+			local_bot.start(path.c_str(), 0);
 		}
 
 		while (const auto server_update = server.get_update()) {

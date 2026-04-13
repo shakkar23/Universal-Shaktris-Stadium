@@ -10,8 +10,11 @@
 bool Bot::is_running() const {
     return running;
 }
+bool Bot::should_skip_suggest()const {
+    return skip_suggest;
+}
 
-void Bot::start(const char* path) {
+void Bot::start(const char* path, long long num_nodes) {
 #ifdef __linux__
     if (pipe(parent_to_child) == -1 || pipe(child_to_parent) == -1) {
         perror("pipe");
@@ -91,12 +94,12 @@ void Bot::start(const char* path) {
 #endif
 
     auto info = TBP_info();
-
-    author = info["author"].get<std::string>();
-    name = info["name"].get<std::string>();
-    version = info["version"].get<std::string>();
+    
     nlohmann::json rules;
     rules["type"] = "rules";
+    if(set_min_nodes) {
+        rules["min_nodes"] = num_nodes;
+    }
     send(rules.dump());
     auto ready = receive();
     std::cout << "TBP ready: " << ready << std::endl
@@ -321,12 +324,17 @@ nlohmann::json Bot::TBP_info() {
     name = uselessInfo["name"];
     author = uselessInfo["author"];
     version = uselessInfo["version"];
+    auto features = uselessInfo["features"].get<std::vector<std::string>>();
+    skip_suggest = std::ranges::contains(features,"skip_suggest");
+    set_min_nodes = std::ranges::contains(features,"set_min_nodes");
     std::cout << "TBP info: " << uselessInfo << std::endl
         << std::endl;
     return uselessInfo;
 }
 
 void Bot::TBP_suggest() {
+    if(skip_suggest)
+        return;
     nlohmann::json suggest;
     suggest["type"] = "suggest";
 

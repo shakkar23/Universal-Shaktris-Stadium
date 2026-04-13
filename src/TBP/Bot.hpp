@@ -22,8 +22,9 @@ class Bot {
 public:
 
     bool is_running() const;
+    bool should_skip_suggest()const;
     
-    void start(const char* path);
+    void start(const char* path, long long num_nodes);
     void stop();
     const std::string& get_name() const;
     const std::string& get_author() const;
@@ -69,5 +70,7 @@ private:
     std::string name;
     std::string author;
     std::string version;
+    bool skip_suggest = false;
+    bool set_min_nodes = false;
     bool running = false;
 };

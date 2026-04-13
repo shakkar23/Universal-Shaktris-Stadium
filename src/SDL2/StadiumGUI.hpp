@@ -61,10 +61,10 @@ public:
             std::string file = inputs.getDroppedFile();
             if (!file.empty()) {
                 if (inputs.getMouse().x < windowWidth / 2) {
-                    player_1.start(file.c_str());
+                    player_1.start(file.c_str(), 0);
                 }
                 else {
-                    player_2.start(file.c_str());
+                    player_2.start(file.c_str(), 0);
                 }
             }
         }break;
