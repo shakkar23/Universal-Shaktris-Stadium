@@ -1,7 +1,20 @@
 find_package(SDL2 CONFIG REQUIRED)
 
 if(UNIX AND NOT APPLE)
-    find_package(SDL_ttf REQUIRED)
+    file(READ "/etc/os-release" OS_RELEASE_CONTENT)
+
+    # Check if the ID field contains "arch"
+    # The quotes and regex ensure we don't accidentally match "archlinux-arm" 
+    # unless we want to, or other sub-variants.
+    if(OS_RELEASE_CONTENT MATCHES "ID=arch")
+        set(IS_ARCH_LINUX TRUE)
+    endif()
+    if(IS_ARCH_LINUX)
+        find_package(SDL2_ttf REQUIRED)
+    elseif()
+        #this quirk of only being called SDL_TTF for sdl2-ttf might be ubuntu specific :/
+        find_package(SDL_ttf REQUIRED)
+    endif()
     set(TTF_LIBS SDL2_ttf)
 else()
     find_package(SDL2_ttf CONFIG REQUIRED)
