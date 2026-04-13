@@ -11,7 +11,7 @@ if(UNIX AND NOT APPLE)
     endif()
     if(IS_ARCH_LINUX)
         find_package(SDL2_ttf REQUIRED)
-    elseif()
+    else()
         #this quirk of only being called SDL_TTF for sdl2-ttf might be ubuntu specific :/
         find_package(SDL_ttf REQUIRED)
     endif()
