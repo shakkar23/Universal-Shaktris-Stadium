@@ -39944,17 +39944,15 @@ static struct unix_syscall {
 #endif
 #define osGeteuid   ((uid_t(*)(void))aSyscall[21].pCurrent)
 
-#if (!defined(SQLITE_OMIT_WAL) || SQLITE_MAX_MMAP_SIZE>0) \
-  && !defined(SQLITE_WASI) {
- "mmap",         (sqlite3_syscall_ptr)mmap,            0
-},
+#if (!defined(SQLITE_OMIT_WAL) || SQLITE_MAX_MMAP_SIZE>0) && !defined(SQLITE_WASI) 
+{ "mmap", (sqlite3_syscall_ptr)mmap, 0 },
 #else
   { "mmap",         (sqlite3_syscall_ptr)0,               0 },
 #endif
 #define osMmap ((void*(*)(void*,size_t,int,int,int,off_t))aSyscall[22].pCurrent)
 
-#if (!defined(SQLITE_OMIT_WAL) || SQLITE_MAX_MMAP_SIZE>0) \
-  && !defined(SQLITE_WASI) {
+#if (!defined(SQLITE_OMIT_WAL) || SQLITE_MAX_MMAP_SIZE>0) && !defined(SQLITE_WASI) 
+{
  "munmap",       (sqlite3_syscall_ptr)munmap,          0
 },
 #else
