@@ -282,6 +282,98 @@ int main(int argc, char* argv[]) {
 		switch(game_state) {
 			case State::PLAYING:
 			{
+				// if need to move then ask the bots for moves
+				bool no_moves_returned = false;
+				Piece suggestion_1 = PieceType::Empty;
+				Piece suggestion_2 = PieceType::Empty;
+
+				auto handle_suggest = [](Bot&bot, Piece&ret) {
+					bot.TBP_suggest();
+					auto suggestion = bot.TBP_suggestion();
+
+					if(suggestion.empty()) {
+						// this is a band-aid patch 
+						// the bot may have different death rules than what we have in our implementation which causes no moves to be returned
+						return true;
+					}
+					ret = suggestion.back();
+					return false;
+				};
+				auto check_piece_valid = [](Game&game, Piece p) {
+					bool collides = game.collides(game.board, p);
+					// inside board bad
+					if(collides)
+						return true;
+
+					Piece lower_piece = p;
+					lower_piece.position.y -= 1;
+					bool in_bounds = true;
+					for(auto mino:lower_piece.minos) {
+						// if all are in bounds
+						bool good = true;
+						
+						auto x = mino.x + lower_piece.position.x;
+						auto y = mino.y + lower_piece.position.y;
+
+						good &= x >= 0;
+						good &= x < game.board.width;
+						good &= y >= 0;
+						good &= y < game.board.height;
+						
+						in_bounds &= good;
+					}
+					// floating bad
+					if(in_bounds and not game.collides(game.board, lower_piece))
+						return true;
+
+					if(not game.hold.has_value() and p.type != game.queue.front() and p.type != game.current_piece.type)
+						return true;
+					if(	game.hold.has_value() and 
+						game.hold.value().type != p.type and 
+						game.current_piece.type != p.type)
+						return true;
+					return false;
+				};
+				
+				if(handle_suggest(player_1,suggestion_1)) {
+					game_state = State::SETUP;
+					break;
+				}
+				
+				bool err1 = check_piece_valid(game.p1_game, suggestion_1);
+				if(err1)
+					throw std::runtime_error("player 1 gave invalid piece");
+					
+				if(handle_suggest(player_2,suggestion_2)) {
+					game_state = State::SETUP;
+					break;
+				}
+				
+				bool err2 = check_piece_valid(game.p2_game, suggestion_2);
+				if(err2)
+					throw std::runtime_error("player 2 gave invalid piece");
+					
+
+				auto is_first_hold = [](Game& game, Piece&suggestion) {
+					bool first_hold = false;
+					if(!game.hold && suggestion.type != game.current_piece.type) {
+						first_hold = true;
+					}
+					return first_hold;
+				};
+
+				bool p1_first_hold = is_first_hold(game.p1_game, suggestion_1);
+				game.p1_move = Move(suggestion_1);
+
+				bool p2_first_hold = is_first_hold(game.p2_game, suggestion_2);
+				game.p2_move = Move(suggestion_2);
+
+				sqlite_row p1(prepare_row(game.p1_game, game.p1_move, game.p1_damage_sent, game.p1_meter));
+				sqlite_row p2(prepare_row(game.p2_game, game.p2_move, game.p2_damage_sent, game.p2_meter));
+				VersusGame::State s = VersusGame::State::PLAYING;
+
+				game.play_moves();
+				
 				if(game.game_over) {
 					game_state = State::GAME_OVER;
 
@@ -292,57 +384,7 @@ int main(int argc, char* argv[]) {
 					break;
 				}
 
-				// if need to move then ask the bots for moves
-				bool no_moves_returned = false;
-				Piece suggestion_1 = PieceType::Empty;
-				Piece suggestion_2 = PieceType::Empty;
-
-				player_1.TBP_suggest();
-				auto p1_suggestions = player_1.TBP_suggestion();
-
-				if(p1_suggestions.empty()) {
-					// this is a band-aid patch 
-					// the bot may have different death rules than what we have in our implementation which causes no moves to be returned
-					game_state = State::SETUP;
-					break;
-				}
-
-				suggestion_1 = p1_suggestions.back();
-
-
-				player_2.TBP_suggest();
-				auto p2_suggestions = player_2.TBP_suggestion();
-				if(p2_suggestions.empty()) {
-					game_state = State::SETUP;
-					break;
-				}
-
-				suggestion_2 = p2_suggestions.back();
-
-
-				game.p1_move.null_move = false;
-				game.p1_move.piece = suggestion_1;
-
-				bool p1_first_hold = false;
-				if(!game.p1_game.hold && suggestion_1.type != game.p1_game.current_piece.type) {
-					p1_first_hold = true;
-				}
-
-				bool p2_first_hold = false;
-				if(!game.p2_game.hold && suggestion_2.type != game.p2_game.current_piece.type) {
-					p2_first_hold = true;
-				}
-
-				game.p2_move.null_move = false;
-				game.p2_move.piece = suggestion_2;
-
-
-				sqlite_row p1(prepare_row(game.p1_game, game.p1_move, game.p1_damage_sent, game.p1_meter));
-				sqlite_row p2(prepare_row(game.p2_game, game.p2_move, game.p2_damage_sent, game.p2_meter));
-				VersusGame::State s = VersusGame::State::PLAYING;
-
-				game.play_moves();
-
+				// data stuff
 				p1.attack = game.p1_damage_sent;
 				p1.damage_received = game.p2_damage_sent;
 				p1.spun = game.p1_spun;
@@ -355,33 +397,32 @@ int main(int argc, char* argv[]) {
 				game_states.push_back({ s, p1, p2, game_uuid, move_index });
 				move_index++;
 
-				bool p2_play = false;
-				if(game.p2_accepts_garbage) {
-					restart_bot_game(player_2, game.p2_game, game.p1_game);
-				} else {
-					if(p2_first_hold) {
-						player_2.TBP_new_piece(game.p2_game.queue[3]);
-					}
-					player_2.TBP_new_piece(game.p2_game.queue.back());
-					p2_play = true;
-				}
-
-				bool p1_play = false;
+				
+				bool p1_did_tbp_play = false;
 				if(game.p1_accepts_garbage) {
+					p1_did_tbp_play = true;
 					restart_bot_game(player_1, game.p1_game, game.p2_game);
 				} else {
 					if(p1_first_hold)
 						player_1.TBP_new_piece(game.p1_game.queue[3]);
 					player_1.TBP_new_piece(game.p1_game.queue.back());
-
-					p1_play = true;
 				}
 
-				if(p2_play)
-					player_2.TBP_play(game.p2_game, suggestion_2);
+				bool p2_did_tbp_play = false;
+				if(game.p2_accepts_garbage) {
+					p2_did_tbp_play = true;
+					restart_bot_game(player_2, game.p2_game, game.p1_game);
+				} else {
+					if(p2_first_hold)
+						player_2.TBP_new_piece(game.p2_game.queue[3]);
+					player_2.TBP_new_piece(game.p2_game.queue.back());
+				}
 
-				if(p1_play)
-					player_1.TBP_play(game.p2_game, suggestion_1);
+				if(not p1_did_tbp_play)
+					player_1.TBP_play(game.p1_game, suggestion_1);
+
+				if(not p2_did_tbp_play)
+					player_2.TBP_play(game.p2_game, suggestion_2);
 
 				// find out if its time to update the framecount
 				if(not player_1.should_skip_suggest() or not player_2.should_skip_suggest())
@@ -427,6 +468,9 @@ int main(int argc, char* argv[]) {
 		}  // end switch
 	}
 
+	player_1.stop();
+	player_2.stop();
+	
 	std::cout << "Ended" << std::endl;
 	sqlite3_finalize(stmt);
 	sqlite3_close(database);
