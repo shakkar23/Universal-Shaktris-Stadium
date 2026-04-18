@@ -118,7 +118,7 @@ bool BotrisVisualizer::update(const Shakkar::inputs& input) {
 						*it = queue_pieces[game.queue.size()];
 					local_bot.TBP_new_piece(queue_pieces[game.queue.size()]);
 				}
-				local_bot.TBP_play(opponent_game, move); // assume the piece placed and everything is correct :)
+				local_bot.TBP_play(game, opponent_game, move); // assume the piece placed and everything is correct :)
 
 
 				message["payload"]["commands"] = nlohmann::json::array();
@@ -275,7 +275,7 @@ bool BotrisVisualizer::update(const Shakkar::inputs& input) {
 						game.stats.b2b = back_to_back;
 						game.garbage_meter = 0;
 
-						local_bot.TBP_start(opponent_game, game.board, queue_pieces, game.hold, game.stats.b2b, game.stats.combo);
+						local_bot.TBP_start(game, opponent_game);
 
 
 						break;
@@ -355,7 +355,7 @@ bool BotrisVisualizer::update(const Shakkar::inputs& input) {
 				queue_pieces.insert(queue_pieces.end(), game.queue.begin(), game.queue.end());
 
 
-				local_bot.TBP_start(opponent_game, game.board, queue_pieces, game.hold, game.stats.b2b, game.stats.combo);
+				local_bot.TBP_start(game, opponent_game);
 
 			}
 			else if (type == "round_over") {

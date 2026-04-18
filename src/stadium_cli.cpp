@@ -8,6 +8,8 @@
 #include <span>
 #include <thread>
 #include <cstdlib>
+#include <expected>
+#include <bitset>
 
 #include "Bot.hpp"
 #include "Dataset/GameState.hpp"
@@ -200,7 +202,7 @@ int main(int argc, char* argv[]) {
 		vargs.push_back(arg);
 	}
 	if(vargs.size() < 2)
-		vargs = { "lmao", "/root/cold-clear/target/release/cc-tbp", "/root/cold-clear/target/release/cc-tbp" };
+		vargs = { "lmao", "/root/cold-clear-data/target/release/cc-tbp", "/root/cold-clear-data/target/release/cc-tbp" };
 	// check if the args are correct
 	if(vargs.size() < 2) {
 		std::cerr << "Usage: " << std::filesystem::path(vargs[0]).filename() << " <bot1> <bot2>" << std::endl;
@@ -222,14 +224,15 @@ int main(int argc, char* argv[]) {
 
 	// player interfaces for the bots
 	Bot player_1;
-
 	// start the bot
 	player_1.start(vargs[1].c_str(), settings["min_nodes"].get<long long>());
+	player_1.name += '1';
 
 	Bot player_2;
-
+	
 	// start the bot
 	player_2.start(vargs[2].c_str(), settings["min_nodes"].get<long long>());
+	player_2.name += '2';
 
 	// create the game
 	VersusGame game;
@@ -273,7 +276,7 @@ int main(int argc, char* argv[]) {
 		for(size_t i = 0; i < Game::queue_size; i++) {
 			tbp_queue[i + 1] = game.queue[i];
 		}
-		bot.TBP_start(opp, game.board, tbp_queue, game.hold, game.stats.b2b != 0, game.stats.combo);
+		bot.TBP_start(game, opp);
 	};
 
 	// add boolean for changing the value while debugging
@@ -284,26 +287,30 @@ int main(int argc, char* argv[]) {
 			{
 				// if need to move then ask the bots for moves
 				bool no_moves_returned = false;
-				Piece suggestion_1 = PieceType::Empty;
-				Piece suggestion_2 = PieceType::Empty;
-
-				auto handle_suggest = [](Bot&bot, Piece&ret) {
+				
+				auto handle_suggest = [](Bot&bot) -> std::expected<Piece,bool>{
 					bot.TBP_suggest();
 					auto suggestion = bot.TBP_suggestion();
 
 					if(suggestion.empty()) {
 						// this is a band-aid patch 
 						// the bot may have different death rules than what we have in our implementation which causes no moves to be returned
-						return true;
+						return std::unexpected(true);
 					}
-					ret = suggestion.back();
-					return false;
+					return suggestion.back();
 				};
-				auto check_piece_valid = [](Game&game, Piece p) {
+				enum class piece_invalid_err {
+					no_err,
+					out_of_bounds,
+					floating,
+					wrong_piece,
+					wrong_piece2,
+				};
+				auto check_piece_valid = [](Game&game, Piece p) -> piece_invalid_err {
 					bool collides = game.collides(game.board, p);
 					// inside board bad
 					if(collides)
-						return true;
+						return piece_invalid_err::out_of_bounds;
 
 					Piece lower_piece = p;
 					lower_piece.position.y -= 1;
@@ -324,37 +331,65 @@ int main(int argc, char* argv[]) {
 					}
 					// floating bad
 					if(in_bounds and not game.collides(game.board, lower_piece))
-						return true;
+						return piece_invalid_err::floating;
 
 					if(not game.hold.has_value() and p.type != game.queue.front() and p.type != game.current_piece.type)
-						return true;
+						return piece_invalid_err::wrong_piece;
 					if(	game.hold.has_value() and 
 						game.hold.value().type != p.type and 
 						game.current_piece.type != p.type)
-						return true;
-					return false;
+						return piece_invalid_err::wrong_piece2;
+					return piece_invalid_err::no_err;
 				};
 				
-				if(handle_suggest(player_1,suggestion_1)) {
-					game_state = State::SETUP;
-					break;
+				// need bool so the bot 2 can flush its suggestion before we restart
+				// if we dont do this it causes a bug where we get a piece placement meant for the previous game on the current one
+				bool failed_suggest = false;
+				const auto suggestion_1_expectation = handle_suggest(player_1);
+				if(not suggestion_1_expectation.has_value()) {
+					failed_suggest = true;
 				}
+				const Piece suggestion_1 = suggestion_1_expectation.value();
 				
-				bool err1 = check_piece_valid(game.p1_game, suggestion_1);
-				if(err1)
-					throw std::runtime_error("player 1 gave invalid piece");
-					
-				if(handle_suggest(player_2,suggestion_2)) {
-					game_state = State::SETUP;
-					break;
-				}
-				
-				bool err2 = check_piece_valid(game.p2_game, suggestion_2);
-				if(err2)
-					throw std::runtime_error("player 2 gave invalid piece");
-					
+				auto err1 = check_piece_valid(game.p1_game, suggestion_1);
 
-				auto is_first_hold = [](Game& game, Piece&suggestion) {
+				if(err1 != piece_invalid_err::no_err) {
+					for(auto mino:suggestion_1.minos) {
+						std::cout << game.p1_game.board.get(mino.x + suggestion_1.position.x,mino.y + suggestion_1.position.y);
+					}
+					std::cout << std::endl;
+					for(auto col : game.p1_game.board.board) {
+						std::cout << std::bitset<32>(col) << std::endl;
+					}
+					//const auto suggestion_1_expectation2 = handle_suggest(player_1);
+					throw std::runtime_error("player 1 gave invalid piece");
+				}
+				
+				const auto suggestion_2_expectation = handle_suggest(player_2);
+				if(not suggestion_2_expectation.has_value()) {
+					failed_suggest = true;
+				}
+				const Piece suggestion_2 = suggestion_2_expectation.value();
+
+				if(failed_suggest) {
+					game_state = State::SETUP;
+					break;
+				}
+				
+				auto err2 = check_piece_valid(game.p2_game, suggestion_2);
+				if(err2 != piece_invalid_err::no_err) {
+					for(auto mino:suggestion_2.minos) {
+						std::cout << game.p2_game.board.get(mino.x + suggestion_2.position.x,mino.y + suggestion_2.position.y);
+					}
+					std::cout << std::endl;
+					for(auto col : game.p2_game.board.board) {
+						std::cout << std::bitset<32>(col) << std::endl;
+					}
+					//const auto suggestion_2_expectation2 = handle_suggest(player_2);
+					throw std::runtime_error("player 2 gave invalid piece");
+				}
+
+				auto is_first_hold = [](Game& game, const Piece&suggestion) {
 					bool first_hold = false;
 					if(!game.hold && suggestion.type != game.current_piece.type) {
 						first_hold = true;
@@ -398,31 +433,23 @@ int main(int argc, char* argv[]) {
 				move_index++;
 
 				
-				bool p1_did_tbp_play = false;
 				if(game.p1_accepts_garbage) {
-					p1_did_tbp_play = true;
 					restart_bot_game(player_1, game.p1_game, game.p2_game);
 				} else {
 					if(p1_first_hold)
 						player_1.TBP_new_piece(game.p1_game.queue[3]);
 					player_1.TBP_new_piece(game.p1_game.queue.back());
+					player_1.TBP_play(game.p1_game, game.p2_game, suggestion_1);
 				}
 
-				bool p2_did_tbp_play = false;
 				if(game.p2_accepts_garbage) {
-					p2_did_tbp_play = true;
 					restart_bot_game(player_2, game.p2_game, game.p1_game);
 				} else {
 					if(p2_first_hold)
 						player_2.TBP_new_piece(game.p2_game.queue[3]);
 					player_2.TBP_new_piece(game.p2_game.queue.back());
+					player_2.TBP_play(game.p2_game, game.p1_game, suggestion_2);
 				}
-
-				if(not p1_did_tbp_play)
-					player_1.TBP_play(game.p1_game, suggestion_1);
-
-				if(not p2_did_tbp_play)
-					player_2.TBP_play(game.p2_game, suggestion_2);
 
 				// find out if its time to update the framecount
 				if(not player_1.should_skip_suggest() or not player_2.should_skip_suggest())
@@ -432,7 +459,7 @@ int main(int argc, char* argv[]) {
 			case State::SETUP:
 			{
 				game = VersusGame();
-
+				
 				restart_bot_game(player_2, game.p2_game, game.p1_game);
 
 				restart_bot_game(player_1, game.p1_game, game.p2_game);

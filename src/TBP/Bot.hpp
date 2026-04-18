@@ -30,7 +30,7 @@ public:
     const std::string& get_author() const;
     const std::string& get_version() const;
 
-    void TBP_play(const Game &opp, const Piece& move);
+    void TBP_play(const Game& ours, const Game& opp, const Piece& piece);
 
     nlohmann::json TBP_info();
 
@@ -38,7 +38,7 @@ public:
 
     std::vector<Piece> TBP_suggestion();
 
-    void TBP_start(const Game& opp, const Board& board, const std::vector<PieceType>& queue, std::optional<Piece> hold = std::nullopt, bool back_to_back = false, int combo = 0);
+    void TBP_start(const Game& ours, const Game& opp);
 
     void TBP_new_piece(PieceType t);
 
@@ -66,10 +66,12 @@ private:
     HANDLE g_hChildStd_OUT_Wr = NULL;
 #endif
 
-
+public:
     std::string name;
+private:
     std::string author;
     std::string version;
+    bool stateless_bot_protocol = false;
     bool skip_suggest = false;
     bool set_min_nodes = false;
     bool running = false;

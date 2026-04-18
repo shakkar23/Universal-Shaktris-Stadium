@@ -1,11 +1,88 @@
 
 #include "Bot.hpp"
+#include "botris_interface.hpp"
 
 #include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
+
+static nlohmann::json to_obj(const Game&game) {
+    nlohmann::json tbp_game;
+    
+    if (game.hold.has_value()) {
+        tbp_game["hold"] = piece_type_to_json(game.hold.value().type);
+    }
+    else
+        tbp_game["hold"] = nullptr;
+    
+    nlohmann::json tmp_board = nlohmann::json::array();
+
+    for (int y = 0; y < Board::height; ++y) {
+		nlohmann::json tmp = nlohmann::json::array();
+		for (int x = 0; x < Board::width; ++x) {
+			if (game.board.get(x, y))
+				tmp.push_back("G");
+			else
+				tmp.push_back(nullptr);
+		}
+        tmp_board.push_back(tmp);
+	}
+    // weird cc requirement of boards being exactly 10x40
+    for (int y = Board::height; y < 40; ++y) {
+		nlohmann::json tmp = nlohmann::json::array();
+		for (int x = 0; x < Board::width; ++x) {
+            tmp.push_back(nullptr);
+        }
+        tmp_board.push_back(tmp);
+    }
+
+    tbp_game["board"] = tmp_board;
+
+
+    tbp_game["combo"] = game.stats.combo;
+    tbp_game["back_to_back"] = game.stats.b2b;
+    tbp_game["meter"] = game.garbage_meter;
+
+    tbp_game["queue"] = nlohmann::json::array();
+
+    auto piece_type_to_str = [](PieceType type) -> std::string {
+		switch (type) {
+		case PieceType::S:
+			return "S";
+			break;
+		case PieceType::Z:
+			return "Z";
+			break;
+		case PieceType::J:
+			return "J";
+			break;
+		case PieceType::L:
+			return "L";
+			break;
+		case PieceType::T:
+			return "T";
+			break;
+		case PieceType::O:
+			return "O";
+			break;
+		case PieceType::I:
+			return "I";
+			break;
+		default:
+			break;
+		}
+        return "";
+	};
+
+    tbp_game["queue"].push_back(piece_type_to_str(game.current_piece.type));
+
+    for (const auto& piece : game.queue) {
+		tbp_game["queue"].push_back(piece_type_to_str(piece));
+	}
+    return tbp_game;
+}
 
 bool Bot::is_running() const {
     return running;
@@ -175,8 +252,11 @@ const std::string& Bot::get_version() const {
     return version;
 }
 
-void Bot::TBP_play(const Game& opp, const Piece& piece) {
+void Bot::TBP_play(const Game& ours, const Game& opp, const Piece& piece) {
     nlohmann::json play;
+    if(stateless_bot_protocol) {
+        play = to_obj(ours);
+    }
     auto px = piece.position.x;
     auto py = piece.position.y;
     auto pk = piece.type;
@@ -250,68 +330,16 @@ void Bot::TBP_play(const Game& opp, const Piece& piece) {
         }(piece.spin);
 
 
+
     play["opponents"] = nlohmann::json::array();
-    // hard code only one player
+    
+    if(stateless_bot_protocol) {
+        play["opponents"].push_back(to_obj(opp));
+    }
 
-    nlohmann::json tmp_board = nlohmann::json::array();
-
-    for (int y = 0; y < Board::height; ++y) {
-		nlohmann::json tmp = nlohmann::json::array();
-		for (int x = 0; x < Board::width; ++x) {
-			if (opp.board.get(x, y))
-				tmp.push_back("G");
-			else
-				tmp.push_back(nullptr);
-		}
-        tmp_board.push_back(tmp);
-	}
-
-    play["opponents"][0]["board"] = tmp_board;
-
-
-    play["opponents"][0]["combo"] = opp.stats.combo;
-    play["opponents"][0]["back_to_back"] = opp.stats.b2b;
-    play["opponents"][0]["meter"] = opp.garbage_meter;
-
-    play["opponents"][0]["queue"] = nlohmann::json::array();
-
-    auto piece_type_to_str = [](PieceType type) -> std::string {
-		switch (type) {
-		case PieceType::S:
-			return "S";
-			break;
-		case PieceType::Z:
-			return "Z";
-			break;
-		case PieceType::J:
-			return "J";
-			break;
-		case PieceType::L:
-			return "L";
-			break;
-		case PieceType::T:
-			return "T";
-			break;
-		case PieceType::O:
-			return "O";
-			break;
-		case PieceType::I:
-			return "I";
-			break;
-		default:
-			break;
-		}
-        return "";
-	};
-
-    play["opponents"][0]["queue"].push_back(piece_type_to_str(opp.current_piece.type));
-
-    for (const auto& piece : opp.queue) {
-		play["opponents"][0]["queue"].push_back(piece_type_to_str(piece));
-	}
 
     send(play.dump());
-    std::cout << "TBP play: " << play << std::endl
+    std::cout << "TBP play: " << this->name << '\t' << play << std::endl
         << std::endl;
 }
 
@@ -327,6 +355,8 @@ nlohmann::json Bot::TBP_info() {
     auto features = uselessInfo["features"].get<std::vector<std::string>>();
     skip_suggest = std::ranges::contains(features,"skip_suggest");
     set_min_nodes = std::ranges::contains(features,"set_min_nodes");
+    stateless_bot_protocol = std::ranges::contains(features,"SBP");
+    skip_suggest |= stateless_bot_protocol;
     std::cout << "TBP info: " << uselessInfo << std::endl
         << std::endl;
     return uselessInfo;
@@ -352,7 +382,7 @@ void Bot::TBP_suggest() {
 
 std::vector<Piece> Bot::TBP_suggestion() {
     nlohmann::json suggestion;
-    std::cout << "TBP suggestion: ";
+    std::cout << "TBP suggestion: " << this->name << '\t' ;
     // example: {"moves":[{"location":{"orientation":"north","type":"L","x":8,"y":0},"spin":"none"}],"type":"suggestion"}
     std::string suggestion_str = receive();
     std::cout << suggestion_str << std::endl << std::endl;
@@ -417,138 +447,25 @@ std::vector<Piece> Bot::TBP_suggestion() {
     return moves;
 }
 
-void Bot::TBP_start(const Game& opp, const Board& board, const std::vector<PieceType> &queue, std::optional<Piece> hold, bool back_to_back, int combo) {
+void Bot::TBP_start(const Game& ours, const Game& opp) {
     nlohmann::json start;
+    start = to_obj(ours);
     start["type"] = "start";
 
-    if (hold.has_value()) {
-        start["hold"] = [](PieceType type) -> nlohmann::json {
-            switch (type) {
-            case PieceType::S:
-                return "S";
-                break;
-            case PieceType::Z:
-                return "Z";
-                break;
-            case PieceType::J:
-                return "J";
-                break;
-            case PieceType::L:
-                return "L";
-                break;
-            case PieceType::T:
-                return "T";
-                break;
-            case PieceType::O:
-                return "O";
-                break;
-            case PieceType::I:
-                return "I";
-                break;
-            case PieceType::Empty:
-                return "I";
-                break;
-            default:
-                return nullptr;
-                break;
-            }
-            }(hold.value().type);
-    }
-    else
-        start["hold"] = nullptr;
-
-    std::vector<std::string> tbpQueue;
-
-    for (const auto& piece : queue) {
-        switch (piece) {
-        case PieceType::S:
-            tbpQueue.push_back("S");
-            break;
-        case PieceType::Z:
-            tbpQueue.push_back("Z");
-            break;
-        case PieceType::I:
-            tbpQueue.push_back("I");
-            break;
-        case PieceType::T:
-            tbpQueue.push_back("T");
-            break;
-        case PieceType::O:
-            tbpQueue.push_back("O");
-            break;
-        case PieceType::J:
-            tbpQueue.push_back("J");
-            break;
-        case PieceType::L:
-            tbpQueue.push_back("L");
-            break;
-        default:
-            throw std::runtime_error("invalid piece");
-            break;
-        }
-    }
-
-    start["queue"] = tbpQueue;
-    start["combo"] = combo;
-    start["back_to_back"] = back_to_back;
-
-    std::array<std::array<std::optional<std::string>, 40>, 10> tbpBoard;
-
-    for (int x = 0; x < Board::width; ++x)
-        for (int y = 0; y < Board::visual_height; ++y) {
-            if (board.get(x, y))
-                tbpBoard[x][y] = "G";
-            else
-                tbpBoard[x][y] = std::nullopt;
-        }
-
-    start["board"] = nlohmann::json::array();
-
-    for (int y = 0; y < Board::height; ++y) {
-        nlohmann::json tmp = nlohmann::json::array();
-        for (int x = 0; x < Board::width; ++x) {
-            if (tbpBoard[x][y].has_value()) {
-                tmp.push_back(tbpBoard[x][y].value());
-            }
-            else {
-                tmp.push_back(nullptr);
-            }
-        }
-        start["board"].push_back(tmp);
-    }
-
-    for (int y = Board::height; y < 40; ++y) {
-        nlohmann::json tmp = nlohmann::json::array();
-        for (int x = 0; x < Board::width; ++x) {
-            tmp.push_back(nullptr);
-        }
-        start["board"].push_back(tmp);
-    }
 
     start["opponents"] = nlohmann::json::array();
+    start["opponents"].push_back(to_obj(opp));
 
-    nlohmann::json tmp_board = nlohmann::json::array();
-
-    for (int y = 0; y < Board::height; ++y) {
-		nlohmann::json tmp = nlohmann::json::array();
-		for (int x = 0; x < Board::width; ++x) {
-			if (opp.board.get(x, y))
-				tmp.push_back("G");
-			else
-				tmp.push_back(nullptr);
-		}
-		tmp_board.push_back(tmp);
-	}
-
-    start["opponents"][0]["board"] = tmp_board;
-
-    std::cout << "TBP start: " << start << std::endl
+    std::cout << "TBP start: " << this->name << "\t" << start << std::endl
         << std::endl;
-
     send(start.dump());
 }
 
 void Bot::TBP_new_piece(PieceType t) {
+    if(stateless_bot_protocol) {
+        return;
+    }
+
     nlohmann::json new_piece;
     new_piece["type"] = "new_piece";
 
@@ -581,13 +498,16 @@ void Bot::TBP_new_piece(PieceType t) {
         }
         }(t);
 
-    std::cout << "TBP new piece: " << new_piece << std::endl
+    std::cout << "TBP new piece: "  << this->name << '\t' << new_piece << std::endl
         << std::endl;
     send(new_piece.dump());
 }
 
 // stops the game itself, a new game CAN be started by sending a start command
 void Bot::TBP_stop() {
+    if(stateless_bot_protocol) {
+        return;
+    }
     nlohmann::json stop;
     stop["type"] = "stop";
 
@@ -598,6 +518,9 @@ void Bot::TBP_stop() {
 
 // if this is sent, the game will end and the bot will be disconnected
 void Bot::TBP_quit() {
+    if(stateless_bot_protocol) {
+        return;
+    }
     nlohmann::json quit;
     quit["type"] = "quit";
 

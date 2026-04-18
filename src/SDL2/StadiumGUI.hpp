@@ -48,7 +48,7 @@ public:
             for (int i = 0; i < Game::queue_size; i++) {
                 tbp_queue[i + 1] = game.queue[i];
             }
-            bot.TBP_start(opp, game.board, tbp_queue, game.hold, game.stats.b2b != 0, game.stats.combo);
+            bot.TBP_start(game, opp);
         };
         switch (game_state) {
         case GameState::IDLE: {
@@ -130,10 +130,10 @@ public:
 
                 
                 if(p2_play)
-                    player_2.TBP_play(game.p1_game, suggestion_2);
+                    player_2.TBP_play(game.p2_game, game.p1_game, suggestion_2);
 
                 if(p1_play)
-                    player_1.TBP_play(game.p2_game, suggestion_1);
+                    player_1.TBP_play(game.p1_game, game.p2_game, suggestion_1);
 
                 frameCount = 0;
             }
