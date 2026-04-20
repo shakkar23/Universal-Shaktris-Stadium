@@ -450,7 +450,7 @@ std::vector<Piece> Bot::TBP_suggestion() {
 void Bot::TBP_start(const Game& ours, const Game& opp) {
     nlohmann::json start;
     start = to_obj(ours);
-    start["type"] = "start";
+    start["type"] = stateless_bot_protocol ? "play" : "start";
 
 
     start["opponents"] = nlohmann::json::array();
@@ -518,9 +518,6 @@ void Bot::TBP_stop() {
 
 // if this is sent, the game will end and the bot will be disconnected
 void Bot::TBP_quit() {
-    if(stateless_bot_protocol) {
-        return;
-    }
     nlohmann::json quit;
     quit["type"] = "quit";
 
