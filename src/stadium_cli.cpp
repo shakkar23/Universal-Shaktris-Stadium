@@ -188,7 +188,7 @@ nlohmann::json get_settings() {
 
 int main(int argc, char** argv) {
 	argparse::ArgumentParser program("stadium_cli");
-	program.add_argument("-game_type").choices("TETRIO1", "PPT");
+	program.add_argument("-game_type").default_value("PPT").choices("TETRIO1", "PPT");
 	program.add_argument("bots").remaining().nargs(2);
 	std::string bot1, bot2;
 	game_type gt;
