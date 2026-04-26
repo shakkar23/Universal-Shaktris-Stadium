@@ -14,6 +14,7 @@
 #include "Bot.hpp"
 #include "Dataset/GameState.hpp"
 #include "VersusGame.hpp"
+#include "Util/argparse.hpp"
 
 #include "sqlite3.h"
 
@@ -45,8 +46,6 @@ struct sqlite_row {
 	u8 hold;
 	int combo;
 	int b2b;
-	int currentcombopower;
-	int currentbtbchainpower;
 };
 
 void push_state(sqlite3* db, VersusGame::State& state, sqlite_row& p1, sqlite_row& p2, sqlite3_int64 game_uuid, int move_index);
@@ -72,9 +71,9 @@ sqlite3_stmt* stmt = nullptr;
 
 bool init_stmt(sqlite3* db) {
 	const char* stmt_str = "INSERT INTO Data (game_id, move_index, state,"
-		"p1_board,p1_current_piece,p1_move_piece_type,p1_move_piece_rot,p1_move_piece_x,p1_move_piece_y,p1_meter,p1_attack,p1_damage_received,p1_spun,p1_queue_0,p1_queue_1,p1_queue_2,p1_queue_3,p1_queue_4,p1_hold,p1_combo, p1_b2b, p1_currentcombopower, p1_currentbtbchainpower,"
-		"p2_board,p2_current_piece,p2_move_piece_type,p2_move_piece_rot,p2_move_piece_x,p2_move_piece_y,p2_meter,p2_attack,p2_damage_received,p2_spun,p2_queue_0,p2_queue_1,p2_queue_2,p2_queue_3,p2_queue_4,p2_hold,p2_combo, p2_b2b, p2_currentcombopower, p2_currentbtbchainpower"
-		") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
+		"p1_board,p1_current_piece,p1_move_piece_type,p1_move_piece_rot,p1_move_piece_x,p1_move_piece_y,p1_meter,p1_attack,p1_damage_received,p1_spun,p1_queue_0,p1_queue_1,p1_queue_2,p1_queue_3,p1_queue_4,p1_hold,p1_combo, p1_b2b,"
+		"p2_board,p2_current_piece,p2_move_piece_type,p2_move_piece_rot,p2_move_piece_x,p2_move_piece_y,p2_meter,p2_attack,p2_damage_received,p2_spun,p2_queue_0,p2_queue_1,p2_queue_2,p2_queue_3,p2_queue_4,p2_hold,p2_combo, p2_b2b"
+		") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
 
 	int ret = sqlite3_prepare(db, stmt_str, -1, &stmt, nullptr);
 	if(ret != SQLITE_OK) {
@@ -104,8 +103,6 @@ bool create_table(sqlite3* db) {
 		"p1_hold TEXT NOT NULL, " 
 		"p1_combo INTEGER NOT NULL, "
 		"p1_b2b INTEGER NOT NULL, "
-		"p1_currentcombopower INTEGER NOT NULL, "
-		"p1_currentbtbchainpower INTEGER NOT NULL, "
 
 		"p2_board BLOB NOT NULL, p2_current_piece TEXT NOT NULL, p2_move_piece_type TEXT NOT NULL, "
 		"p2_move_piece_rot INTEGER NOT NULL, p2_move_piece_x INTEGER NOT NULL, p2_move_piece_y INTEGER NOT NULL, "
@@ -115,8 +112,6 @@ bool create_table(sqlite3* db) {
 		"p2_hold TEXT NOT NULL, "
 		"p2_combo INTEGER NOT NULL, "
 		"p2_b2b INTEGER NOT NULL, "
-		"p2_currentcombopower INTEGER NOT NULL, "
-		"p2_currentbtbchainpower INTEGER NOT NULL, "
 		"PRIMARY KEY(game_id, move_index)"
 		");";
 
@@ -191,23 +186,35 @@ nlohmann::json get_settings() {
 	return nlohmann::json::parse((std::stringstream() << f.rdbuf()).str());
 }
 
-int main(int argc, char* argv[]) {
-	init_settings();
-	auto settings = get_settings();
-	// the args should look like this: ./a.out <bot1> <bot2> <pps>
-	std::span<char*> args(argv, argc);
-	// push to vector
-	std::vector<std::string> vargs;
-	for(auto& arg : args) {
-		vargs.push_back(arg);
-	}
-	if(vargs.size() < 2)
-		vargs = { "lmao", "/root/cold-clear-data/target/release/cc-tbp", "/root/cold-clear-data/target/release/cc-tbp" };
-	// check if the args are correct
-	if(vargs.size() < 2) {
-		std::cerr << "Usage: " << std::filesystem::path(vargs[0]).filename() << " <bot1> <bot2>" << std::endl;
+int main(int argc, char** argv) {
+	argparse::ArgumentParser program("stadium_cli");
+	program.add_argument("-game_type").choices("TETRIO1", "PPT");
+	program.add_argument("bots").remaining().nargs(2);
+	std::string bot1, bot2;
+	game_type gt;
+	try {
+		program.parse_args(argc, argv);
+
+		auto bots = program.get<std::vector<std::string>>("bots");
+		bot1 = bots.at(0);
+		bot2 = bots.at(1);
+		auto gt_param = program.get("-game_type");
+		if(gt_param == "PPT") {
+			gt = game_type::PPT;
+		} else {
+			gt = game_type::Tetrio;
+		}
+		
+	} catch(std::exception& err) {
+		std::cerr << "failed to parse arguments: " << err.what() << std::endl;
 		return 1;
 	}
+	std::cout << bot1 << bot2 << std::endl;
+	init_settings();
+	auto settings = get_settings();
+
+	// if(argc < 2)
+	// 	vargs = { "lmao", "/root/cold-clear-data/target/release/cc-tbp", "/root/cold-clear-data/target/release/cc-tbp" };
 
 	// pieces per second that the bots will play at
 	float pps = 0.0f;
@@ -225,17 +232,17 @@ int main(int argc, char* argv[]) {
 	// player interfaces for the bots
 	Bot player_1;
 	// start the bot
-	player_1.start(vargs[1].c_str(), settings["min_nodes"].get<long long>());
+	player_1.start(bot1.c_str(), settings["min_nodes"].get<long long>());
 	player_1.name += '1';
 
 	Bot player_2;
 	
 	// start the bot
-	player_2.start(vargs[2].c_str(), settings["min_nodes"].get<long long>());
+	player_2.start(bot2.c_str(), settings["min_nodes"].get<long long>());
 	player_2.name += '2';
 
 	// create the game
-	VersusGame game;
+	VersusGame game(game_type::PPT);
 	std::string binary_path = settings["db_path"].get<std::string>();
 
 	std::vector<game_state> game_states;
@@ -531,10 +538,8 @@ sqlite_row prepare_row(const Game& game, const Move& move, int damage_sent, int 
 	d.queue[4] = (u8)game.queue[4];
 
 	d.hold = game.hold.has_value() ? (u8)game.hold.value().type : 7;
-	d.combo = game.stats.combo;
-	d.b2b = game.stats.b2b;
-	d.currentcombopower = game.stats.currentcombopower;
-	d.currentbtbchainpower = game.stats.currentbtbchainpower;
+	d.combo = game.get_combo();
+	d.b2b = game.get_b2b();
 	return d;
 }
 
@@ -607,10 +612,6 @@ void push_state(sqlite3* db, VersusGame::State& state, sqlite_row& p1, sqlite_ro
 	index++;
 	sqlite3_bind_int(stmt, index, p1.b2b);
 	index++;
-	sqlite3_bind_int(stmt, index, p1.currentcombopower);
-	index++;
-	sqlite3_bind_int(stmt, index, p1.currentbtbchainpower);
-	index++;
 
 
 	sqlite3_bind_blob(stmt, index, p2.b.data(), 200, SQLITE_TRANSIENT);
@@ -648,10 +649,6 @@ void push_state(sqlite3* db, VersusGame::State& state, sqlite_row& p1, sqlite_ro
 	sqlite3_bind_int(stmt, index, p2.combo);
 	index++;
 	sqlite3_bind_int(stmt, index, p2.b2b);
-	index++;
-	sqlite3_bind_int(stmt, index, p2.currentcombopower);
-	index++;
-	sqlite3_bind_int(stmt, index, p2.currentbtbchainpower);
 	index++;
 
 	rv = sqlite3_step(stmt);

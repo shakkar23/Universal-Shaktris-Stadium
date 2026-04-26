@@ -41,8 +41,8 @@ static nlohmann::json to_obj(const Game&game) {
     tbp_game["board"] = tmp_board;
 
 
-    tbp_game["combo"] = game.stats.combo;
-    tbp_game["back_to_back"] = game.stats.b2b;
+    tbp_game["combo"] = game.get_combo();
+    tbp_game["back_to_back"] = game.get_b2b();
     tbp_game["meter"] = game.garbage_meter;
 
     tbp_game["queue"] = nlohmann::json::array();

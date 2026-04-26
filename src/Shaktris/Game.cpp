@@ -163,7 +163,9 @@ void Game::add_garbage(int lines, int location) {
 // ported from
 // https://github.com/emmachase/tetrio-combo
 int Game::damage_sent(int linesCleared, spinType spinType, bool pc) {
-    return tetrio_damage({ linesCleared, spinType, pc }, stats);
+    return std::visit([=](auto &stats) {
+        return stats.damage({ linesCleared, spinType, pc });
+    }, stats);
 }
 
 void Game::process_movement(Piece& piece, Movement movement) const {
@@ -186,6 +188,21 @@ void Game::process_movement(Piece& piece, Movement movement) const {
         // default:
         // std::unreachable();
     }
+}
+
+int Game::get_b2b() const{
+    return std::visit([](auto s){return s.b2b;}, this->stats);
+}
+
+void Game::set_b2b(int b2b) {
+    std::visit([b2b](auto s){s.b2b = b2b;}, this->stats);
+}
+
+int Game::get_combo() const{
+    return std::visit([](auto s){return s.combo;}, this->stats);
+}
+void Game::set_combo(int combo){
+    std::visit([combo](auto s){s.combo = combo;}, this->stats);
 }
 
 std::vector<Piece> Game::movegen(PieceType piece_type) const {

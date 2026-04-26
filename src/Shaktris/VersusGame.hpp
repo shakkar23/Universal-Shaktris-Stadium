@@ -8,9 +8,14 @@
 #include "Piece.hpp"
 #include "rng.hpp"
 
+enum class game_type {
+    PPT,
+    Tetrio
+};
+
 class VersusGame {
    public:
-    VersusGame() {
+    VersusGame(game_type type = game_type::Tetrio) {
         p1_rng.rng = std::random_device()();
         p1_rng.makebag();
 
@@ -66,7 +71,12 @@ class VersusGame {
     }
 
     double inline get_b2b(int id) const {
-        return id == 0 ? p1_game.stats.b2b : p2_game.stats.b2b;
+        return std::visit(
+            [](auto &stat) {
+                return stat.b2b;
+            },
+            id == 0 ? p1_game.stats : p2_game.stats
+        );
     }
 
     const inline Game& get_game(int id) const {

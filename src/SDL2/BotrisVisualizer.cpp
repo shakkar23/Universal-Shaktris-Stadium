@@ -271,8 +271,8 @@ bool BotrisVisualizer::update(const Shakkar::inputs& input) {
 
 						game.hold = hold;
 						game.current_piece = type;
-						game.stats.combo = combo;
-						game.stats.b2b = back_to_back;
+						game.set_combo(combo);
+						game.set_b2b(back_to_back);
 						game.garbage_meter = 0;
 
 						local_bot.TBP_start(game, opponent_game);
@@ -315,8 +315,8 @@ bool BotrisVisualizer::update(const Shakkar::inputs& input) {
 
 					opponent_game.hold = hold;
 					opponent_game.current_piece = type;
-					opponent_game.stats.combo = combo;
-					opponent_game.stats.b2b = back_to_back;
+					opponent_game.set_combo(combo);
+					opponent_game.set_b2b(back_to_back);
 					opponent_game.garbage_meter = 0;
 
 					continue;

@@ -10,7 +10,7 @@
 #include "Piece.hpp"
 #include "Constants.hpp"
 #include "rng.hpp"
-#include "tetrio.hpp"
+#include "game_type_stats.hpp"
 
 
 class Game {
@@ -53,6 +53,11 @@ public:
 
     void process_movement(Piece& piece, Movement movement) const;
 
+    int get_b2b()const;
+    void set_b2b(int);
+    int get_combo()const;
+    void set_combo(int);
+
     std::vector<Piece> movegen(PieceType piece_type) const;
 
     std::vector<Piece> get_possible_piece_placements() const;
@@ -62,7 +67,7 @@ public:
     std::optional<Piece> hold;
     int garbage_meter = 0;
 
-    TetrioStats stats;
+    std::variant<TetrioStats, PptStats> stats;
 
     std::array<PieceType, queue_size> queue;
 };
