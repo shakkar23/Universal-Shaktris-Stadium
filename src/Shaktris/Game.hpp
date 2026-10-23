@@ -63,6 +63,10 @@ public:
 
     std::vector<Piece> get_possible_piece_placements() const;
 
+    // the spin a placement actually earns: a full claim stands if some reachable rotation lands on it with a full spin,
+    // a spin claim is a mini if some rotation spins onto it at all, otherwise it's no spin
+    spinType validate_spin(const Piece& piece) const;
+
     Board board;
     Piece current_piece;
     std::optional<Piece> hold;

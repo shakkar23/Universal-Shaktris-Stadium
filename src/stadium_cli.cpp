@@ -172,7 +172,8 @@ void init_settings() {
 	"num_games":100,
 	"db_path":"database.db",
 	"min_nodes":2000,
-	"pps":2
+	"pps":2,
+	"garbage_delay":0
 })";
 	auto exists = std::filesystem::exists(SETTINGS_PATH);
 	if(exists)
@@ -244,6 +245,21 @@ int main(int argc, char** argv) {
 		}
 	}
 
+	// turns an attack waits before it joins the receiver's meter: 0 lands it at once, 1 holds it back a turn like botris
+	int garbage_delay = 0;
+	if(settings.contains("garbage_delay")) {
+		try {
+			garbage_delay = settings["garbage_delay"].get<int>();
+		} catch(const std::exception&) {
+			std::cerr << "garbage_delay must be a number" << std::endl;
+			return 1;
+		}
+		if(garbage_delay < 0) {
+			std::cerr << "garbage_delay can't be negative" << std::endl;
+			return 1;
+		}
+	}
+
 	// player interfaces for the bots
 	Bot player_1;
 	// start the bot
@@ -257,7 +273,7 @@ int main(int argc, char** argv) {
 	player_2.name += '2';
 
 	// create the game
-	VersusGame game(game_type::PPT);
+	VersusGame game(game_type::PPT, garbage_delay);
 	std::string binary_path = settings["db_path"].get<std::string>();
 
 	std::vector<game_state> game_states;
@@ -470,7 +486,7 @@ int main(int argc, char** argv) {
 					if(p1_first_hold)
 						player_1.TBP_new_piece(game.p1_game.queue[3]);
 					player_1.TBP_new_piece(game.p1_game.queue.back());
-					player_1.TBP_play(game.p1_game, game.p2_game, suggestion_1);
+					player_1.TBP_play(game.p1_game, game.p2_game, game.p1_move.piece);
 				}
 
 				if(game.p2_accepts_garbage) {
@@ -479,7 +495,7 @@ int main(int argc, char** argv) {
 					if(p2_first_hold)
 						player_2.TBP_new_piece(game.p2_game.queue[3]);
 					player_2.TBP_new_piece(game.p2_game.queue.back());
-					player_2.TBP_play(game.p2_game, game.p1_game, suggestion_2);
+					player_2.TBP_play(game.p2_game, game.p1_game, game.p2_move.piece);
 				}
 
 				// find out if its time to update the framecount
@@ -489,7 +505,7 @@ int main(int argc, char** argv) {
 
 			case State::SETUP:
 			{
-				game = VersusGame();
+				game = VersusGame(game_type::PPT, garbage_delay);
 				
 				restart_bot_game(player_2, game.p2_game, game.p1_game, game.p2_rng);
 

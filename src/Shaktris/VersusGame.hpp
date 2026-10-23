@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <optional>
 #include <random>
 #include <vector>
@@ -15,7 +16,7 @@ enum class game_type {
 
 class VersusGame {
    public:
-    VersusGame(game_type type = game_type::Tetrio) {
+    VersusGame(game_type type = game_type::Tetrio, int garbage_delay = 0) : garbage_delay(garbage_delay) {
         p1_rng.rng = std::random_device()();
         p1_rng.makebag();
 
@@ -47,8 +48,21 @@ class VersusGame {
     double p1_atk = 0;
     double p2_atk = 0;
 
+    // garbage each player is due to receive that they can cancel or tank now
     int p1_meter = 0;
     int p2_meter = 0;
+
+    // turns an attack waits before it joins the receiver's meter. 0 is instant, as in tetr.io's versus;
+    // 1 holds it back a turn, as in botris. garbage in transit can still be cancelled
+    int garbage_delay = 0;
+
+    struct PendingGarbage {
+        int lines;
+        int release_turn;
+    };
+    // attacks heading for each player that haven't joined their meter yet
+    std::vector<PendingGarbage> p1_pending;
+    std::vector<PendingGarbage> p2_pending;
 
     bool p1_spun = false;
     bool p2_spun = false;
@@ -106,9 +120,12 @@ class VersusGame {
         turn += 1;
 
         int p1_cleared_lines = 0;
+        int p1_attack = 0;
         bool p1_first_hold = false;
         // player 1 move
         if (!p1_move.null_move) {
+            // only score the spin the placement can really have
+            p1_move.piece.spin = p1_game.validate_spin(p1_move.piece);
             spinType spin = p1_move.piece.spin;
 
             p1_first_hold = p1_game.place_piece(p1_move.piece);
@@ -138,14 +155,17 @@ class VersusGame {
 
             p1_atk += dmg;
 
-            p2_meter += dmg;
+            p1_attack = dmg;
         } else 
             p1_spun = false;
 
         int p2_cleared_lines = 0;
+        int p2_attack = 0;
         bool p2_first_hold = false;
-        // player 1 move
+        // player 2 move
         if (!p2_move.null_move) {
+            // only score the spin the placement can really have
+            p2_move.piece.spin = p2_game.validate_spin(p2_move.piece);
             spinType spin = p2_move.piece.spin;
 
             p2_first_hold = p2_game.place_piece(p2_move.piece);
@@ -174,36 +194,65 @@ class VersusGame {
 
             p2_atk += dmg;
 
-            p1_meter += dmg;
+            p2_attack = dmg;
         } else 
 			p2_spun = false;
 
-        int min_meter = std::min(p1_meter, p2_meter);
+        // garbage that has waited out the delay joins the meter, where it can be cancelled or tanked
+        auto release = [this](std::vector<PendingGarbage>& pending, int& meter) {
+            std::erase_if(pending, [&](const PendingGarbage& garbage) {
+                if (garbage.release_turn > turn)
+                    return false;
+                meter += garbage.lines;
+                return true;
+            });
+        };
+        release(p1_pending, p1_meter);
+        release(p2_pending, p2_meter);
 
-        p1_meter -= min_meter;
-        p2_meter -= min_meter;
+        auto cancel = [](int& a, int& b) {
+            int cancelled = std::min(a, b);
+            a -= cancelled;
+            b -= cancelled;
+        };
 
-        // if possible for both players to have damage, update here
-        if (!p1_move.null_move && p1_cleared_lines == 0) {
-            if (p1_meter > 0) {
-                // player 2 accepts garbage!
-                p1_game.add_garbage(p1_meter, p1_rng.GetRand(10));
-                p1_meter = 0;
-                p1_accepts_garbage = true;
-            } else {
-                p1_accepts_garbage = false;
-            }
+        // zero pass-through: an attack cancels everything heading for its sender, soonest first,
+        // the meter and then what's still in transit
+        auto cancel_incoming = [&](int& attack, int& meter, std::vector<PendingGarbage>& pending) {
+            cancel(attack, meter);
+            for (auto& garbage : pending)
+                cancel(attack, garbage.lines);
+            std::erase_if(pending, [](const PendingGarbage& garbage) { return garbage.lines == 0; });
+        };
+        cancel_incoming(p1_attack, p1_meter, p1_pending);
+        cancel_incoming(p2_attack, p2_meter, p2_pending);
+
+        // and the rest of the two attacks meet head on
+        cancel(p1_attack, p2_attack);
+
+        if (garbage_delay == 0) {
+            p2_meter += p1_attack;
+            p1_meter += p2_attack;
+        } else {
+            if (p1_attack > 0)
+                p2_pending.push_back({ p1_attack, turn + garbage_delay });
+            if (p2_attack > 0)
+                p1_pending.push_back({ p2_attack, turn + garbage_delay });
         }
 
-        if (!p2_move.null_move && p2_cleared_lines == 0) {
-            if (p2_meter > 0) {
-                // player 2 accepts garbage!
-                p2_game.add_garbage(p2_meter, p2_rng.GetRand(10));
-                p2_meter = 0;
-                p2_accepts_garbage = true;
-            } else {
-                p2_accepts_garbage = false;
-            }
+        // a placement that clears nothing tanks the whole meter
+        p1_accepts_garbage = false;
+        if (!p1_move.null_move && p1_cleared_lines == 0 && p1_meter > 0) {
+            p1_game.add_garbage(p1_meter, p1_rng.GetRand(10));
+            p1_meter = 0;
+            p1_accepts_garbage = true;
+        }
+
+        p2_accepts_garbage = false;
+        if (!p2_move.null_move && p2_cleared_lines == 0 && p2_meter > 0) {
+            p2_game.add_garbage(p2_meter, p2_rng.GetRand(10));
+            p2_meter = 0;
+            p2_accepts_garbage = true;
         }
 
         if (p1_first_hold)
