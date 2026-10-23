@@ -2,6 +2,7 @@
 #include "Bot.hpp"
 #include "botris_interface.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -457,10 +458,12 @@ void Bot::TBP_start(const Game& ours, const Game& opp, const RNG* rng) {
     start = to_obj(ours);
     start["type"] = stateless_bot_protocol ? "play" : "start";
     if(rng) {
+        // which pieces are left, in a fixed order: the order they'll be dealt in is the rng's secret.
         // GetPiece refills the bag as it hands out the last piece, so this is never empty
         nlohmann::json bag_state = nlohmann::json::array();
-        for(size_t i = rng->bagiterator; i < rng->bag.size(); i++)
-            bag_state.push_back(piece_type_to_json(rng->bag[i]));
+        for(PieceType type : { PieceType::S, PieceType::Z, PieceType::J, PieceType::L, PieceType::T, PieceType::O, PieceType::I })
+            if(std::find(rng->bag.begin() + rng->bagiterator, rng->bag.end(), type) != rng->bag.end())
+                bag_state.push_back(piece_type_to_json(type));
         start["randomizer"] = { {"type", "seven_bag"}, {"bag_state", bag_state} };
     }
 
