@@ -263,13 +263,13 @@ int main(int argc, char** argv) {
 	// player interfaces for the bots
 	Bot player_1;
 	// start the bot
-	player_1.start(bot1.c_str(), settings["min_nodes"].get<long long>(), threads[0]);
+	player_1.start(bot1.c_str(), settings["min_nodes"].get<long long>(), threads[0], garbage_delay);
 	player_1.name += '1';
 
 	Bot player_2;
 	
 	// start the bot
-	player_2.start(bot2.c_str(), settings["min_nodes"].get<long long>(), threads[1]);
+	player_2.start(bot2.c_str(), settings["min_nodes"].get<long long>(), threads[1], garbage_delay);
 	player_2.name += '2';
 
 	// create the game

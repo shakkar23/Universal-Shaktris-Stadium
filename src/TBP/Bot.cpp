@@ -92,7 +92,7 @@ bool Bot::should_skip_suggest()const {
     return skip_suggest;
 }
 
-void Bot::start(const char* path, long long num_nodes, int threads) {
+void Bot::start(const char* path, long long num_nodes, int threads, int garbage_delay) {
     num_threads = threads;
 #ifdef __linux__
     if (pipe(parent_to_child) == -1 || pipe(child_to_parent) == -1) {
@@ -182,6 +182,8 @@ void Bot::start(const char* path, long long num_nodes, int threads) {
     if(set_threads && num_threads > 0) {
         rules["threads"] = num_threads;
     }
+    // bots that don't know it ignore it
+    rules["garbage_delay"] = garbage_delay;
     send(rules.dump());
     auto ready = receive();
     std::cout << "TBP ready: " << ready << std::endl

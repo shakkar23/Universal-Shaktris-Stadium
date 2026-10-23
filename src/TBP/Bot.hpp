@@ -24,8 +24,9 @@ public:
     bool is_running() const;
     bool should_skip_suggest()const;
     
-    // threads goes to bots that advertise set_threads; 0 leaves the bot to choose
-    void start(const char* path, long long num_nodes, int threads = 0);
+    // threads goes to bots that advertise set_threads; 0 leaves the bot to choose.
+    // garbage_delay, the turns an attack spends in transit, goes to every bot in rules
+    void start(const char* path, long long num_nodes, int threads = 0, int garbage_delay = 0);
     void stop();
     const std::string& get_name() const;
     const std::string& get_author() const;
