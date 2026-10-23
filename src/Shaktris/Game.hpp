@@ -3,6 +3,7 @@
 #include <cmath>
 #include <optional>
 #include <ranges>
+#include <variant>
 #include <vector>
 
 #include "Board.hpp"

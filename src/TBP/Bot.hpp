@@ -24,7 +24,8 @@ public:
     bool is_running() const;
     bool should_skip_suggest()const;
     
-    void start(const char* path, long long num_nodes);
+    // threads goes to bots that advertise set_threads; 0 leaves the bot to choose
+    void start(const char* path, long long num_nodes, int threads = 0);
     void stop();
     const std::string& get_name() const;
     const std::string& get_author() const;
@@ -38,7 +39,8 @@ public:
 
     std::vector<Piece> TBP_suggestion();
 
-    void TBP_start(const Game& ours, const Game& opp);
+    // with rng, the start carries the seven-bag state: the pieces left in the bag after the queue
+    void TBP_start(const Game& ours, const Game& opp, const RNG* rng = nullptr);
 
     void TBP_new_piece(PieceType t);
 
@@ -74,5 +76,7 @@ private:
     bool stateless_bot_protocol = false;
     bool skip_suggest = false;
     bool set_min_nodes = false;
+    bool set_threads = false;
+    int num_threads = 0;
     bool running = false;
 };

@@ -1,3 +1,7 @@
+# OFF builds only stadium_cli, which needs neither SDL2 nor IXWebSocket
+option(UTS_GUI "Build the SDL2 programs (GUI stadium, visualizers, botris stadium)" ON)
+
+if(UTS_GUI)
 find_package(SDL2 CONFIG REQUIRED)
 
 if(UNIX AND NOT APPLE)
@@ -47,14 +51,17 @@ set(UTS_SOURCES
     "stadium_gui.cpp"
     ${COMMON_SOURCES}
 )
+endif()
 
 
 if( NOT WIN32)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64-v3")
 endif()
 
+if(UTS_GUI)
 add_executable(sdl2_stadium ${UTS_SOURCES})
 target_link_libraries(sdl2_stadium PRIVATE SDL2::SDL2 SDL2::SDL2main ${TTF_LIBS})
+endif()
 
 
 set(UTS_CLI_SOURCES
@@ -81,6 +88,7 @@ add_subdirectory(sqlite3)
 add_executable(sdl2_stadium_cli ${UTS_CLI_SOURCES} )
 target_link_libraries(sdl2_stadium_cli PRIVATE sqlite3)
 
+if(UTS_GUI)
 set(VISUALIZER_SOURCES
     "tbp_visualizer.cpp"
     ${COMMON_SOURCES}
@@ -105,6 +113,7 @@ set(BOTRIS_SOURCES
 
 add_executable(sdl2_bottris_stadium ${BOTRIS_SOURCES})
 target_link_libraries(sdl2_bottris_stadium PRIVATE SDL2::SDL2 SDL2::SDL2main ${TTF_LIBS} ixwebsocket::ixwebsocket)
+endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/TBP)
