@@ -338,11 +338,9 @@ void Bot::TBP_play(const Game& ours, const Game& opp, const Piece& piece) {
 
 
 
+    // the opponent as it stands after this turn, for TBP2 as well as SBP
     play["opponents"] = nlohmann::json::array();
-    
-    if(stateless_bot_protocol) {
-        play["opponents"].push_back(to_obj(opp));
-    }
+    play["opponents"].push_back(to_obj(opp));
 
 
     send(play.dump());

@@ -41,7 +41,7 @@ Attribute      | Description
 ---------      | -----------
 `back_to_back` | An integer, the back to back count, instead of TBP's boolean.
 `meter`        | Integer, garbage in the meter. The stadium currently always sends `0`.
-`opponents`    | A list of the other players, each an object with TBP's `start` attributes plus `meter` (no `randomizer`).
+`opponents`    | A list of the other players, each with its own `board`, `hold`, `queue`, `combo`, `back_to_back` and `meter` as above.
 `randomizer`   | As in TBP's randomizer extension (`seven_bag`), but sent without the `randomizer` attribute on `rules`.
 
 `start` can come while the bot is calculating, with no `stop` before it, and
@@ -54,7 +54,7 @@ garbage landed.
 
 Attribute   | Description
 ---------   | -----------
-`opponents` | Always an empty list in TBP2. Bots should ignore it.
+`opponents` | The other players as in `start`, as they stand after this turn's moves (garbage tanked this turn included).
 
 The `move` carries the spin the frontend scored, which can differ from the one
 suggested: a spin counts only if some reachable rotation lands the piece there
