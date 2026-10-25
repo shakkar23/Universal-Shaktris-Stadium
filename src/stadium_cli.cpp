@@ -245,6 +245,21 @@ int main(int argc, char** argv) {
 		}
 	}
 
+	// search iterations per move for each bot, sent to the bots that advertise set_thinks: one number
+	// for both or [p1, p2]. absent or 0 leaves the bot to choose
+	std::array<long long, 2> thinks = { 0, 0 };
+	if(settings.contains("thinks")) {
+		try {
+			if(settings["thinks"].is_array())
+				thinks = { settings["thinks"].at(0).get<long long>(), settings["thinks"].at(1).get<long long>() };
+			else
+				thinks.fill(settings["thinks"].get<long long>());
+		} catch(const std::exception&) {
+			std::cerr << "thinks must be a number or [p1, p2]" << std::endl;
+			return 1;
+		}
+	}
+
 	// turns an attack waits before it joins the receiver's meter: 0 lands it at once, 1 holds it back a turn like botris
 	int garbage_delay = 0;
 	if(settings.contains("garbage_delay")) {
@@ -263,13 +278,13 @@ int main(int argc, char** argv) {
 	// player interfaces for the bots
 	Bot player_1;
 	// start the bot
-	player_1.start(bot1.c_str(), settings["min_nodes"].get<long long>(), threads[0], garbage_delay);
+	player_1.start(bot1.c_str(), settings["min_nodes"].get<long long>(), threads[0], garbage_delay, thinks[0]);
 	player_1.name += '1';
 
 	Bot player_2;
 	
 	// start the bot
-	player_2.start(bot2.c_str(), settings["min_nodes"].get<long long>(), threads[1], garbage_delay);
+	player_2.start(bot2.c_str(), settings["min_nodes"].get<long long>(), threads[1], garbage_delay, thinks[1]);
 	player_2.name += '2';
 
 	// create the game

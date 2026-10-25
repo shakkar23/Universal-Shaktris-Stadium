@@ -14,6 +14,7 @@ Feature         | Meaning
 -------         | -------
 `set_threads`   | The bot accepts `threads` in `rules`.
 `set_min_nodes` | The bot accepts `min_nodes` in `rules`.
+`set_thinks`    | The bot accepts `thinks` in `rules`.
 `skip_suggest`  | The frontend never sends `suggest`. The bot sends a `suggestion` unprompted after every `start` and `play`.
 
 ## `rules`
@@ -22,6 +23,7 @@ Attribute       | Description
 ---------       | -----------
 `threads`       | Search threads to use. Sent only to bots with `set_threads`, and only when the frontend sets it.
 `min_nodes`     | The least search work to do before suggesting. Sent only to bots with `set_min_nodes`.
+`thinks`        | Exactly this many search iterations (select a leaf, expand it, back up) per move. Sent only to bots with `set_thinks`, and only when the frontend sets it.
 `garbage_delay` | Turns an attack spends in transit before it joins the receiver's meter. Always sent; omitted means `0`.
 
 Garbage works per turn, where both players place one piece at once:

@@ -92,7 +92,7 @@ bool Bot::should_skip_suggest()const {
     return skip_suggest;
 }
 
-void Bot::start(const char* path, long long num_nodes, int threads, int garbage_delay) {
+void Bot::start(const char* path, long long num_nodes, int threads, int garbage_delay, long long thinks) {
     num_threads = threads;
 #ifdef __linux__
     if (pipe(parent_to_child) == -1 || pipe(child_to_parent) == -1) {
@@ -181,6 +181,9 @@ void Bot::start(const char* path, long long num_nodes, int threads, int garbage_
     }
     if(set_threads && num_threads > 0) {
         rules["threads"] = num_threads;
+    }
+    if(set_thinks && thinks > 0) {
+        rules["thinks"] = thinks;
     }
     // bots that don't know it ignore it
     rules["garbage_delay"] = garbage_delay;
@@ -361,6 +364,7 @@ nlohmann::json Bot::TBP_info() {
     skip_suggest = std::ranges::contains(features,"skip_suggest");
     set_min_nodes = std::ranges::contains(features,"set_min_nodes");
     set_threads = std::ranges::contains(features,"set_threads");
+    set_thinks = std::ranges::contains(features,"set_thinks");
     stateless_bot_protocol = std::ranges::contains(features,"SBP");
     skip_suggest |= stateless_bot_protocol;
     std::cout << "TBP info: " << uselessInfo << std::endl
