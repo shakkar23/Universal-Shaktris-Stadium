@@ -350,7 +350,8 @@ int main(int argc, char** argv) {
 						// the bot may have different death rules than what we have in our implementation which causes no moves to be returned
 						return std::unexpected(true);
 					}
-					return suggestion.back();
+					// moves come most preferred first
+					return suggestion.front();
 				};
 				enum class piece_invalid_err {
 					no_err,
@@ -501,7 +502,8 @@ int main(int argc, char** argv) {
 					if(p1_first_hold)
 						player_1.TBP_new_piece(game.p1_game.queue[3]);
 					player_1.TBP_new_piece(game.p1_game.queue.back());
-					player_1.TBP_play(game.p1_game, game.p2_game, game.p1_move.piece);
+					// echo the bot's own move: play_moves rewrites the spin for scoring
+					player_1.TBP_play(game.p1_game, game.p2_game, suggestion_1);
 				}
 
 				if(game.p2_accepts_garbage) {
@@ -510,7 +512,8 @@ int main(int argc, char** argv) {
 					if(p2_first_hold)
 						player_2.TBP_new_piece(game.p2_game.queue[3]);
 					player_2.TBP_new_piece(game.p2_game.queue.back());
-					player_2.TBP_play(game.p2_game, game.p1_game, game.p2_move.piece);
+					// echo the bot's own move: play_moves rewrites the spin for scoring
+					player_2.TBP_play(game.p2_game, game.p1_game, suggestion_2);
 				}
 
 				// find out if its time to update the framecount
