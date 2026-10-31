@@ -172,7 +172,8 @@ void init_settings() {
 	"num_games":100,
 	"db_path":"database.db",
 	"min_nodes":2000,
-	"pps":2
+	"pps":2,
+	"garbage_delay":0
 })";
 	auto exists = std::filesystem::exists(SETTINGS_PATH);
 	if(exists)
@@ -229,20 +230,65 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
+	// search threads for each bot, sent to the bots that advertise set_threads: one number for both
+	// or [p1, p2]. absent or 0 leaves the bot to choose
+	std::array<int, 2> threads = { 0, 0 };
+	if(settings.contains("threads")) {
+		try {
+			if(settings["threads"].is_array())
+				threads = { settings["threads"].at(0).get<int>(), settings["threads"].at(1).get<int>() };
+			else
+				threads.fill(settings["threads"].get<int>());
+		} catch(const std::exception&) {
+			std::cerr << "threads must be a number or [p1, p2]" << std::endl;
+			return 1;
+		}
+	}
+
+	// search iterations per move for each bot, sent to the bots that advertise set_thinks: one number
+	// for both or [p1, p2]. absent or 0 leaves the bot to choose
+	std::array<long long, 2> thinks = { 0, 0 };
+	if(settings.contains("thinks")) {
+		try {
+			if(settings["thinks"].is_array())
+				thinks = { settings["thinks"].at(0).get<long long>(), settings["thinks"].at(1).get<long long>() };
+			else
+				thinks.fill(settings["thinks"].get<long long>());
+		} catch(const std::exception&) {
+			std::cerr << "thinks must be a number or [p1, p2]" << std::endl;
+			return 1;
+		}
+	}
+
+	// turns an attack waits before it joins the receiver's meter: 0 lands it at once, 1 holds it back a turn like botris
+	int garbage_delay = 0;
+	if(settings.contains("garbage_delay")) {
+		try {
+			garbage_delay = settings["garbage_delay"].get<int>();
+		} catch(const std::exception&) {
+			std::cerr << "garbage_delay must be a number" << std::endl;
+			return 1;
+		}
+		if(garbage_delay < 0) {
+			std::cerr << "garbage_delay can't be negative" << std::endl;
+			return 1;
+		}
+	}
+
 	// player interfaces for the bots
 	Bot player_1;
 	// start the bot
-	player_1.start(bot1.c_str(), settings["min_nodes"].get<long long>());
+	player_1.start(bot1.c_str(), settings["min_nodes"].get<long long>(), threads[0], garbage_delay, thinks[0]);
 	player_1.name += '1';
 
 	Bot player_2;
 	
 	// start the bot
-	player_2.start(bot2.c_str(), settings["min_nodes"].get<long long>());
+	player_2.start(bot2.c_str(), settings["min_nodes"].get<long long>(), threads[1], garbage_delay, thinks[1]);
 	player_2.name += '2';
 
 	// create the game
-	VersusGame game(game_type::PPT);
+	VersusGame game(game_type::PPT, garbage_delay);
 	std::string binary_path = settings["db_path"].get<std::string>();
 
 	std::vector<game_state> game_states;
@@ -277,13 +323,13 @@ int main(int argc, char** argv) {
 	long long num_games = 0;
 	int num_draws = 0;
 
-	auto restart_bot_game = [](Bot& bot, Game& game, Game& opp) {
+	auto restart_bot_game = [](Bot& bot, Game& game, Game& opp, const RNG& rng) {
 		std::vector<PieceType> tbp_queue(Game::queue_size + 1);
 		tbp_queue[0] = game.current_piece.type;
 		for(size_t i = 0; i < Game::queue_size; i++) {
 			tbp_queue[i + 1] = game.queue[i];
 		}
-		bot.TBP_start(game, opp);
+		bot.TBP_start(game, opp, &rng);
 	};
 
 	// add boolean for changing the value while debugging
@@ -304,7 +350,8 @@ int main(int argc, char** argv) {
 						// the bot may have different death rules than what we have in our implementation which causes no moves to be returned
 						return std::unexpected(true);
 					}
-					return suggestion.back();
+					// moves come most preferred first
+					return suggestion.front();
 				};
 				enum class piece_invalid_err {
 					no_err,
@@ -417,6 +464,15 @@ int main(int argc, char** argv) {
 				game.play_moves();
 				
 				if(game.game_over) {
+					// record the final move like any other: its attacks are what killed the loser
+					p1.attack = game.p1_damage_sent;
+					p1.damage_received = game.p2_damage_sent;
+					p1.spun = game.p1_spun;
+					p2.attack = game.p2_damage_sent;
+					p2.damage_received = game.p1_damage_sent;
+					p2.spun = game.p2_spun;
+					game_states.push_back({ s, p1, p2, game_uuid, move_index });
+					move_index++;
 					game_state = State::GAME_OVER;
 
 					Move empty_move;
@@ -441,20 +497,22 @@ int main(int argc, char** argv) {
 
 				
 				if(game.p1_accepts_garbage) {
-					restart_bot_game(player_1, game.p1_game, game.p2_game);
+					restart_bot_game(player_1, game.p1_game, game.p2_game, game.p1_rng);
 				} else {
 					if(p1_first_hold)
 						player_1.TBP_new_piece(game.p1_game.queue[3]);
 					player_1.TBP_new_piece(game.p1_game.queue.back());
+					// echo the bot's own move: play_moves rewrites the spin for scoring
 					player_1.TBP_play(game.p1_game, game.p2_game, suggestion_1);
 				}
 
 				if(game.p2_accepts_garbage) {
-					restart_bot_game(player_2, game.p2_game, game.p1_game);
+					restart_bot_game(player_2, game.p2_game, game.p1_game, game.p2_rng);
 				} else {
 					if(p2_first_hold)
 						player_2.TBP_new_piece(game.p2_game.queue[3]);
 					player_2.TBP_new_piece(game.p2_game.queue.back());
+					// echo the bot's own move: play_moves rewrites the spin for scoring
 					player_2.TBP_play(game.p2_game, game.p1_game, suggestion_2);
 				}
 
@@ -465,11 +523,11 @@ int main(int argc, char** argv) {
 
 			case State::SETUP:
 			{
-				game = VersusGame();
+				game = VersusGame(game_type::PPT, garbage_delay);
 				
-				restart_bot_game(player_2, game.p2_game, game.p1_game);
+				restart_bot_game(player_2, game.p2_game, game.p1_game, game.p2_rng);
 
-				restart_bot_game(player_1, game.p1_game, game.p2_game);
+				restart_bot_game(player_1, game.p1_game, game.p2_game, game.p1_rng);
 
 				game_state = State::PLAYING;
 			} break;

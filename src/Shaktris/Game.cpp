@@ -266,6 +266,62 @@ std::vector<Piece> Game::movegen(PieceType piece_type) const {
     return valid_moves;
 }
 
+spinType Game::validate_spin(const Piece& target) const {
+    if (target.spin == spinType::null)
+        return spinType::null;
+
+    bool full = false;
+    bool mini = false;
+
+    std::vector<Piece> open_nodes;
+    std::vector<Piece> next_nodes;
+    std::vector<bool> visited = std::vector<bool>(6444);
+
+    open_nodes.emplace_back(Piece(target.type));
+
+    // search every reachable state, and from each try the rotations that land on the target
+    while (open_nodes.size() > 0) {
+        for (auto& piece : open_nodes) {
+            auto h = piece.compact_hash();
+            if (visited[h])
+                continue;
+            visited[h] = true;
+
+            for (Movement movement : { Movement::RotateCounterClockwise, Movement::RotateClockwise }) {
+                Piece new_piece = piece;
+                new_piece.spin = spinType::null;
+                process_movement(new_piece, movement);
+                next_nodes.emplace_back(new_piece);
+
+                // a failed rotation leaves the piece where it was
+                if (new_piece.rotation == piece.rotation)
+                    continue;
+
+                if (new_piece.rotation == target.rotation &&
+                    new_piece.position.x == target.position.x &&
+                    new_piece.position.y == target.position.y) {
+                    full |= new_piece.spin == spinType::normal;
+                    mini |= new_piece.spin == spinType::mini;
+                }
+            }
+
+            for (Movement movement : { Movement::Left, Movement::Right, Movement::SonicDrop }) {
+                Piece new_piece = piece;
+                process_movement(new_piece, movement);
+                next_nodes.emplace_back(new_piece);
+            }
+        }
+        open_nodes = next_nodes;
+        next_nodes.clear();
+    }
+
+    if (target.spin == spinType::normal && full)
+        return spinType::normal;
+    if (full || mini)
+        return spinType::mini;
+    return spinType::null;
+}
+
 // warning! if there is a piece in the hold and the current piece is empty, we dont use the hold
 std::vector<Piece> Game::get_possible_piece_placements() const {
 

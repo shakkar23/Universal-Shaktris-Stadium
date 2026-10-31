@@ -2,6 +2,7 @@
 #include "Bot.hpp"
 #include "botris_interface.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -91,7 +92,8 @@ bool Bot::should_skip_suggest()const {
     return skip_suggest;
 }
 
-void Bot::start(const char* path, long long num_nodes) {
+void Bot::start(const char* path, long long num_nodes, int threads, int garbage_delay, long long thinks) {
+    num_threads = threads;
 #ifdef __linux__
     if (pipe(parent_to_child) == -1 || pipe(child_to_parent) == -1) {
         perror("pipe");
@@ -177,6 +179,14 @@ void Bot::start(const char* path, long long num_nodes) {
     if(set_min_nodes) {
         rules["min_nodes"] = num_nodes;
     }
+    if(set_threads && num_threads > 0) {
+        rules["threads"] = num_threads;
+    }
+    if(set_thinks && thinks > 0) {
+        rules["thinks"] = thinks;
+    }
+    // bots that don't know it ignore it
+    rules["garbage_delay"] = garbage_delay;
     send(rules.dump());
     auto ready = receive();
     std::cout << "TBP ready: " << ready << std::endl
@@ -331,11 +341,9 @@ void Bot::TBP_play(const Game& ours, const Game& opp, const Piece& piece) {
 
 
 
+    // the opponent as it stands after this turn, for TBP2 as well as SBP
     play["opponents"] = nlohmann::json::array();
-    
-    if(stateless_bot_protocol) {
-        play["opponents"].push_back(to_obj(opp));
-    }
+    play["opponents"].push_back(to_obj(opp));
 
 
     send(play.dump());
@@ -355,6 +363,8 @@ nlohmann::json Bot::TBP_info() {
     auto features = uselessInfo["features"].get<std::vector<std::string>>();
     skip_suggest = std::ranges::contains(features,"skip_suggest");
     set_min_nodes = std::ranges::contains(features,"set_min_nodes");
+    set_threads = std::ranges::contains(features,"set_threads");
+    set_thinks = std::ranges::contains(features,"set_thinks");
     stateless_bot_protocol = std::ranges::contains(features,"SBP");
     skip_suggest |= stateless_bot_protocol;
     std::cout << "TBP info: " << uselessInfo << std::endl
@@ -447,10 +457,19 @@ std::vector<Piece> Bot::TBP_suggestion() {
     return moves;
 }
 
-void Bot::TBP_start(const Game& ours, const Game& opp) {
+void Bot::TBP_start(const Game& ours, const Game& opp, const RNG* rng) {
     nlohmann::json start;
     start = to_obj(ours);
     start["type"] = stateless_bot_protocol ? "play" : "start";
+    if(rng) {
+        // which pieces are left, in a fixed order: the order they'll be dealt in is the rng's secret.
+        // GetPiece refills the bag as it hands out the last piece, so this is never empty
+        nlohmann::json bag_state = nlohmann::json::array();
+        for(PieceType type : { PieceType::S, PieceType::Z, PieceType::J, PieceType::L, PieceType::T, PieceType::O, PieceType::I })
+            if(std::find(rng->bag.begin() + rng->bagiterator, rng->bag.end(), type) != rng->bag.end())
+                bag_state.push_back(piece_type_to_json(type));
+        start["randomizer"] = { {"type", "seven_bag"}, {"bag_state", bag_state} };
+    }
 
 
     start["opponents"] = nlohmann::json::array();
